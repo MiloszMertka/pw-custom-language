@@ -1,5 +1,5 @@
 package pl.edu.pw.ee.llvm;
 
-public enum VarType {
+public enum PrimitiveType {
     INT, REAL, UNKNOWN
 }

@@ -12,113 +12,114 @@ import java.util.Stack;
 
 class LLVMActions extends HolyJavaBaseListener {
 
-    Map<String, VarType> variables = new HashMap<>();
-    Stack<Value> stack = new Stack<>();
+    private static final Path OUTPUT_FILE_PATH = Path.of("output.ll");
+    private final Map<String, PrimitiveType> variables = new HashMap<>();
+    private final Stack<Value> stack = new Stack<>();
 
     @Override
-    public void exitProg(HolyJavaParser.ProgContext ctx) {
+    public void exitProg(HolyJavaParser.ProgContext context) {
         try {
-            final var outputPath = Path.of("output.ll");
             final var llvmCode = LLVMGenerator.generate();
-            Files.writeString(outputPath, llvmCode);
+            Files.writeString(OUTPUT_FILE_PATH, llvmCode);
         } catch (IOException ioException) {
             throw new IllegalStateException(ioException);
         }
     }
 
     @Override
-    public void exitAssign(HolyJavaParser.AssignContext ctx) {
-        String ID = ctx.ID().getText();
-        Value v = stack.pop();
-        variables.put(ID, v.type);
-        if (v.type == VarType.INT) {
+    public void exitAssign(HolyJavaParser.AssignContext context) {
+        final var ID = context.ID().getText();
+        final var variable = stack.pop();
+        variables.put(ID, variable.type);
+
+        if (variable.type == PrimitiveType.INT) {
             LLVMGenerator.declare_i32(ID);
-            LLVMGenerator.assign_i32(ID, v.name);
+            LLVMGenerator.assign_i32(ID, variable.name);
         }
-        if (v.type == VarType.REAL) {
+
+        if (variable.type == PrimitiveType.REAL) {
             LLVMGenerator.declare_double(ID);
-            LLVMGenerator.assign_double(ID, v.name);
+            LLVMGenerator.assign_double(ID, variable.name);
         }
     }
 
     @Override
-    public void exitPrint(HolyJavaParser.PrintContext ctx) {
-        String ID = ctx.ID().getText();
-        VarType type = variables.get(ID);
-        if (type != null) {
-            if (type == VarType.INT) {
-                LLVMGenerator.printf_i32(ID);
-            }
-            if (type == VarType.REAL) {
-                LLVMGenerator.printf_double(ID);
-            }
-        } else {
-            error(ctx.getStart().getLine(), "unknown variable " + ID);
+    public void exitPrint(HolyJavaParser.PrintContext context) {
+        final var ID = context.ID().getText();
+        final var type = variables.get(ID);
+        switch (type) {
+            case INT -> LLVMGenerator.printf_i32(ID);
+            case REAL -> LLVMGenerator.printf_double(ID);
+            case UNKNOWN -> error(context.getStart().getLine(), "unknown variable " + ID);
         }
     }
 
     @Override
-    public void exitAdd(HolyJavaParser.AddContext ctx) {
-        Value v1 = stack.pop();
-        Value v2 = stack.pop();
-        if (v1.type == v2.type) {
-            if (v1.type == VarType.INT) {
-                LLVMGenerator.add_i32(v1.name, v2.name);
-                stack.push(new Value("%" + (LLVMGenerator.reg - 1), VarType.INT));
-            }
-            if (v1.type == VarType.REAL) {
-                LLVMGenerator.add_double(v1.name, v2.name);
-                stack.push(new Value("%" + (LLVMGenerator.reg - 1), VarType.REAL));
-            }
-        } else {
-            error(ctx.getStart().getLine(), "add type mismatch");
+    public void exitAdd(HolyJavaParser.AddContext context) {
+        final var value1 = stack.pop();
+        final var value2 = stack.pop();
+
+        if (!value1.type.equals(value2.type)) {
+            error(context.getStart().getLine(), "add type mismatch");
+        }
+
+        if (value1.type == PrimitiveType.INT) {
+            LLVMGenerator.add_i32(value1.name, value2.name);
+            stack.push(new Value("%" + (LLVMGenerator.reg - 1), PrimitiveType.INT));
+        }
+
+        if (value1.type == PrimitiveType.REAL) {
+            LLVMGenerator.add_double(value1.name, value2.name);
+            stack.push(new Value("%" + (LLVMGenerator.reg - 1), PrimitiveType.REAL));
         }
     }
 
     @Override
-    public void exitMult(HolyJavaParser.MultContext ctx) {
-        Value v1 = stack.pop();
-        Value v2 = stack.pop();
-        if (v1.type == v2.type) {
-            if (v1.type == VarType.INT) {
-                LLVMGenerator.mult_i32(v1.name, v2.name);
-                stack.push(new Value("%" + (LLVMGenerator.reg - 1), VarType.INT));
-            }
-            if (v1.type == VarType.REAL) {
-                LLVMGenerator.mult_double(v1.name, v2.name);
-                stack.push(new Value("%" + (LLVMGenerator.reg - 1), VarType.REAL));
-            }
-        } else {
-            error(ctx.getStart().getLine(), "mult type mismatch");
+    public void exitMult(HolyJavaParser.MultContext context) {
+        final var value1 = stack.pop();
+        final var value2 = stack.pop();
+
+        if (!value1.type.equals(value2.type)) {
+            error(context.getStart().getLine(), "add type mismatch");
+        }
+
+        if (value1.type == PrimitiveType.INT) {
+            LLVMGenerator.mult_i32(value1.name, value2.name);
+            stack.push(new Value("%" + (LLVMGenerator.reg - 1), PrimitiveType.INT));
+        }
+
+        if (value1.type == PrimitiveType.REAL) {
+            LLVMGenerator.mult_double(value1.name, value2.name);
+            stack.push(new Value("%" + (LLVMGenerator.reg - 1), PrimitiveType.REAL));
         }
     }
 
     @Override
-    public void exitInt(HolyJavaParser.IntContext ctx) {
-        stack.push(new Value(ctx.INT().getText(), VarType.INT));
+    public void exitInt(HolyJavaParser.IntContext context) {
+        stack.push(new Value(context.INT().getText(), PrimitiveType.INT));
     }
 
     @Override
-    public void exitReal(HolyJavaParser.RealContext ctx) {
-        stack.push(new Value(ctx.REAL().getText(), VarType.REAL));
+    public void exitReal(HolyJavaParser.RealContext context) {
+        stack.push(new Value(context.REAL().getText(), PrimitiveType.REAL));
     }
 
     @Override
-    public void exitToint(HolyJavaParser.TointContext ctx) {
-        Value v = stack.pop();
-        LLVMGenerator.fptosi(v.name);
-        stack.push(new Value("%" + (LLVMGenerator.reg - 1), VarType.INT));
+    public void exitToint(HolyJavaParser.TointContext context) {
+        final var value = stack.pop();
+        LLVMGenerator.fptosi(value.name);
+        stack.push(new Value("%" + (LLVMGenerator.reg - 1), PrimitiveType.INT));
     }
 
     @Override
-    public void exitToreal(HolyJavaParser.TorealContext ctx) {
-        Value v = stack.pop();
-        LLVMGenerator.sitofp(v.name);
-        stack.push(new Value("%" + (LLVMGenerator.reg - 1), VarType.REAL));
+    public void exitToreal(HolyJavaParser.TorealContext context) {
+        final var value = stack.pop();
+        LLVMGenerator.sitofp(value.name);
+        stack.push(new Value("%" + (LLVMGenerator.reg - 1), PrimitiveType.REAL));
     }
 
-    void error(int line, String msg) {
-        System.err.println("Error, line " + line + ", " + msg);
+    void error(int line, String message) {
+        System.err.println("Error, line " + line + ", " + message);
         System.exit(1);
     }
 

@@ -76,9 +76,9 @@ class LLVMGenerator {
     }
 
     static String generate() {
-        String text = "";
+        var text = "";
         text += "declare i32 @printf(i8*, ...)\n";
-        text += "declare i32 @__isoc99_scanf(i8*, ...)\n";
+        text += "declare i32 @scanf(i8*, ...)\n";
         text += "@strpi = constant [4 x i8] c\"%d\\0A\\00\"\n";
         text += "@strpd = constant [4 x i8] c\"%f\\0A\\00\"\n";
         text += "@strs = constant [3 x i8] c\"%d\\00\"\n";
