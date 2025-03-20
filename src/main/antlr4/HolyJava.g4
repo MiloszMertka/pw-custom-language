@@ -4,19 +4,54 @@ grammar HolyJava;
 package pl.edu.pw.ee;
 }
 
-prog: ( stat? NEWLINE)*;
+prog: ( stat? NEWLINE )*
+;
 
-stat: WRITE ID # write | ID '=' INT # assign | READ ID # read;
+stat:	ID '=' expr0		#assign
+	    | PRINT ID   		#print
+;
 
-WRITE: 'write';
+expr0:  expr1			#single0
+      | expr1 ADD expr1	#add
+;
 
-READ: 'read';
+expr1:  expr2			#single1
+      | expr2 MULT expr2	#mult
+;
 
-STRING: '"' ( ~('\\' | '"'))* '"';
-ID: ('a' ..'z' | 'A' ..'Z')+;
+expr2:   INT			#int
+       | REAL			#real
+       | TOINT expr2		#toint
+       | TOREAL expr2		#toreal
+       | '(' expr0 ')'		#par
+;
 
-INT: '0' ..'9'+;
+PRINT:	'print'
+    ;
 
-NEWLINE: '\r'? '\n';
+TOINT: '(int)'
+    ;
 
-WS: (' ' | '\t')+ { skip(); };
+TOREAL: '(real)'
+    ;
+
+ID:   ('a'..'z'|'A'..'Z')+
+   ;
+
+REAL: '0'..'9'+'.''0'..'9'+
+    ;
+
+INT: '0'..'9'+
+    ;
+
+ADD: '+'
+    ;
+
+MULT: '*'
+    ;
+
+NEWLINE:	'\r'? '\n'
+    ;
+
+WS:   (' '|'\t')+ { skip(); }
+    ;
