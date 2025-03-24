@@ -15,7 +15,7 @@ public class LLVMCompiler {
         final var lexer = new HolyJavaLexer(input);
         final var tokens = new CommonTokenStream(lexer);
         final var parser = new HolyJavaParser(tokens);
-        final var tree = parser.prog();
+        final var tree = parser.programme();
         final var walker = new ParseTreeWalker();
         final var actions = new LLVMActions();
         walker.walk(actions, tree);

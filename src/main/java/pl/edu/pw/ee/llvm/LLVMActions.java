@@ -17,7 +17,7 @@ class LLVMActions extends HolyJavaBaseListener {
     private final Stack<Value> stack = new Stack<>();
 
     @Override
-    public void exitProg(HolyJavaParser.ProgContext context) {
+    public void exitProgramme(HolyJavaParser.ProgrammeContext context) {
         try {
             final var llvmCode = LLVMGenerator.generate();
             Files.writeString(OUTPUT_FILE_PATH, llvmCode);
