@@ -103,11 +103,6 @@ class LLVMActions extends HolyJavaBaseListener {
             LLVMGenerator.add_double(value1.name, value2.name);
             stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.REAL));
         }
-
-        if (value1.type == PrimitiveType.STRING) {
-            LLVMGenerator.add_string(value1.name, value1.length, value2.name, value2.length);
-            stack.push(new Value("%" + (LLVMGenerator.register - 3), PrimitiveType.STRING, value1.length + value2.length));
-        }
     }
 
     @Override
@@ -217,7 +212,7 @@ class LLVMActions extends HolyJavaBaseListener {
         final var tmp = context.STRING().getText();
         final var content = tmp.substring(1, tmp.length() - 1);
         LLVMGenerator.constant_string(content);
-        final var id = "ptrstr" + (LLVMGenerator.str - 1);
+        final var id = "str" + (LLVMGenerator.str - 1);
         stack.push(new Value(id, PrimitiveType.STRING, content.length()));
     }
 

@@ -1,2 +1,3 @@
-read x;
-print x;
+x = "Dupa";
+y = x;
+print y;

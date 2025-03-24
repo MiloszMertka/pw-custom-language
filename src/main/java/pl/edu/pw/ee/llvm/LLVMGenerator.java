@@ -229,41 +229,6 @@ class LLVMGenerator {
         register++;
     }
 
-    static void add_string(String id1, int l1, String id2, int l2) {
-        allocate_string("str" + str, l1 + l2);
-        MAIN_TEXT.append("%ptrstr").append(str).append(" = alloca i8*\n");
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = getelementptr inbounds [")
-                .append(l1 + l2 + 1)
-                .append(" x i8], [")
-                .append(l1 + l2 + 1)
-                .append(" x i8]* %str")
-                .append(str)
-                .append(", i64 0, i64 0\n");
-        register++;
-        MAIN_TEXT.append("store i8* %").append(register - 1).append(", i8** %ptrstr").append(str).append("\n");
-        MAIN_TEXT.append("%").append(register).append(" = load i8*, i8** %ptrstr").append(str).append("\n");
-        register++;
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = call i8* @strcpy(i8* %")
-                .append(register - 1)
-                .append(", i8* ")
-                .append(id1)
-                .append(")\n");
-        register++;
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = call i8* @strcat(i8* %")
-                .append(register - 2)
-                .append(", i8* ")
-                .append(id2)
-                .append(")\n");
-        register++;
-        str++;
-    }
-
     static void constant_string(String content) {
         final var length = content.length() + 1;
         HEADER_TEXT.append("@str")
@@ -294,24 +259,6 @@ class LLVMGenerator {
                 .append(length)
                 .append(", i1 false)\n");
         register++;
-        MAIN_TEXT.append("%ptr")
-                .append(id)
-                .append(" = alloca i8*\n");
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = getelementptr inbounds [")
-                .append(length)
-                .append(" x i8], [")
-                .append(length)
-                .append(" x i8]* %")
-                .append(id)
-                .append(", i64 0, i64 0\n");
-        register++;
-        MAIN_TEXT.append("store i8* %")
-                .append(register - 1)
-                .append(", i8** %ptr")
-                .append(id)
-                .append("\n");
         str++;
     }
 
