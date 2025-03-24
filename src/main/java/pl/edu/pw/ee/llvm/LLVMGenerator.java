@@ -312,12 +312,6 @@ class LLVMGenerator {
                 .append(", i8** %ptr")
                 .append(id)
                 .append("\n");
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = load i8*, i8** %ptr")
-                .append(id)
-                .append("\n");
-        register++;
         str++;
     }
 
