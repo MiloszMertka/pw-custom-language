@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Stack;
 
 class LLVMActions extends HolyJavaBaseListener {
@@ -54,6 +55,10 @@ class LLVMActions extends HolyJavaBaseListener {
             if (variable.type == PrimitiveType.STRING) {
                 LLVMGenerator.declare_string(ID);
             }
+
+            if (variable.type == PrimitiveType.BOOLEAN) {
+                LLVMGenerator.declare_bool(ID);
+            }
         }
 
         if (variable.type == PrimitiveType.INT) {
@@ -75,6 +80,10 @@ class LLVMActions extends HolyJavaBaseListener {
         if (variable.type == PrimitiveType.STRING) {
             LLVMGenerator.assign_string(ID, variable.name);
         }
+
+        if (variable.type == PrimitiveType.BOOLEAN) {
+            LLVMGenerator.assign_bool(ID, variable.name);
+        }
     }
 
     @Override
@@ -88,6 +97,7 @@ class LLVMActions extends HolyJavaBaseListener {
                 case FLOAT -> LLVMGenerator.printf_float(ID);
                 case DOUBLE -> LLVMGenerator.printf_double(ID);
                 case STRING -> LLVMGenerator.printf_string(ID);
+                case BOOLEAN -> LLVMGenerator.printf_bool(ID);
                 case UNKNOWN -> error(context.getStart().getLine(), "unknown variable " + ID);
             }
         } else {
@@ -329,6 +339,7 @@ class LLVMActions extends HolyJavaBaseListener {
             case LONG -> LLVMGenerator.load_i64(ID);
             case FLOAT -> LLVMGenerator.load_float(ID);
             case DOUBLE -> LLVMGenerator.load_double(ID);
+            case BOOLEAN -> LLVMGenerator.load_bool(ID);
             case STRING -> LLVMGenerator.load_string(ID);
         }
 
@@ -366,6 +377,15 @@ class LLVMActions extends HolyJavaBaseListener {
         LLVMGenerator.constant_string(content);
         final var id = "str" + (LLVMGenerator.str - 1);
         stack.push(new Value(id, PrimitiveType.STRING, content.length()));
+    }
+
+    @Override
+    public void exitBool(HolyJavaParser.BoolContext context) {
+        if (Objects.equals(context.BOOL().getText(), "true")) {
+            stack.push(new Value("1", PrimitiveType.BOOLEAN));
+        } else {
+            stack.push(new Value("0", PrimitiveType.BOOLEAN));
+        }
     }
 
     private void error(int line, String message) {

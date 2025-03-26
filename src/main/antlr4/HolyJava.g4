@@ -36,6 +36,7 @@ value:    ID            #id
         | LONG			#long
         | DOUBLE		#double
         | STRING        #string
+        | BOOL          #bool
         ;
 
 READ: 'read'
@@ -54,6 +55,9 @@ TOFLOAT: '(float)'
     ;
 
 TODOUBLE: '(double)'
+    ;
+
+BOOL: 'true' | 'false'
     ;
 
 ID: ('a'..'z'|'A'..'Z')+

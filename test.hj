@@ -1,3 +1,2 @@
-x = 2.5f;
-y = x + 3.0f;
-print y;
+x = true;
+print x;
