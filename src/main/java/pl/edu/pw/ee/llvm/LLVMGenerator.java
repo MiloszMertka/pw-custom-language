@@ -17,6 +17,26 @@ class LLVMGenerator {
         register++;
     }
 
+    static void printf_i64(String id) {
+        load_i64(id);
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @strpi, i32 0, i32 0), i64 %")
+                .append(register - 1)
+                .append(")\n");
+        register++;
+    }
+
+    static void printf_float(String id) {
+        load_float(id);
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @strpd, i32 0, i32 0), float %")
+                .append(register - 1)
+                .append(")\n");
+        register++;
+    }
+
     static void printf_double(String id) {
         load_double(id);
         MAIN_TEXT.append("%")
@@ -31,6 +51,18 @@ class LLVMGenerator {
         MAIN_TEXT.append("%")
                 .append(id)
                 .append(" = alloca i32\n");
+    }
+
+    static void declare_i64(String id) {
+        MAIN_TEXT.append("%")
+                .append(id)
+                .append(" = alloca i64\n");
+    }
+
+    static void declare_float(String id) {
+        MAIN_TEXT.append("%")
+                .append(id)
+                .append(" = alloca float\n");
     }
 
     static void declare_double(String id) {
@@ -49,6 +81,22 @@ class LLVMGenerator {
         MAIN_TEXT.append("store i32 ")
                 .append(value)
                 .append(", i32* %")
+                .append(id)
+                .append("\n");
+    }
+
+    static void assign_i64(String id, String value) {
+        MAIN_TEXT.append("store i64 ")
+                .append(value)
+                .append(", i64* %")
+                .append(id)
+                .append("\n");
+    }
+
+    static void assign_float(String id, String value) {
+        MAIN_TEXT.append("store float ")
+                .append(value)
+                .append(", float* %")
                 .append(id)
                 .append("\n");
     }
@@ -87,6 +135,24 @@ class LLVMGenerator {
         register++;
     }
 
+    static void load_i64(String id) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = load i64, i64* %")
+                .append(id)
+                .append("\n");
+        register++;
+    }
+
+    static void load_float(String id) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = load float, float* %")
+                .append(id)
+                .append("\n");
+        register++;
+    }
+
     static void load_double(String id) {
         MAIN_TEXT.append("%")
                 .append(register)
@@ -116,6 +182,17 @@ class LLVMGenerator {
         register++;
     }
 
+    static void add_i64(String val1, String val2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = add i64 ")
+                .append(val1)
+                .append(", ")
+                .append(val2)
+                .append("\n");
+        register++;
+    }
+
     static void sub_i32(String val1, String val2) {
         MAIN_TEXT.append("%")
                 .append(register)
@@ -127,6 +204,28 @@ class LLVMGenerator {
         register++;
     }
 
+    static void sub_i64(String val1, String val2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = sub i64 ")
+                .append(val2)
+                .append(", ")
+                .append(val1)
+                .append("\n");
+        register++;
+    }
+
+    static void add_float(String val1, String val2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = fadd float ")
+                .append(val1)
+                .append(", ")
+                .append(val2)
+                .append("\n");
+        register++;
+    }
+
     static void add_double(String val1, String val2) {
         MAIN_TEXT.append("%")
                 .append(register)
@@ -134,6 +233,17 @@ class LLVMGenerator {
                 .append(val1)
                 .append(", ")
                 .append(val2)
+                .append("\n");
+        register++;
+    }
+
+    static void sub_float(String val1, String val2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = fsub float ")
+                .append(val2)
+                .append(", ")
+                .append(val1)
                 .append("\n");
         register++;
     }
@@ -160,6 +270,17 @@ class LLVMGenerator {
         register++;
     }
 
+    static void mult_i64(String val1, String val2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = mul i64 ")
+                .append(val1)
+                .append(", ")
+                .append(val2)
+                .append("\n");
+        register++;
+    }
+
     static void div_i32(String val1, String val2) {
         MAIN_TEXT.append("%")
                 .append(register)
@@ -167,6 +288,28 @@ class LLVMGenerator {
                 .append(val2)
                 .append(", ")
                 .append(val1)
+                .append("\n");
+        register++;
+    }
+
+    static void div_i64(String val1, String val2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = sdiv i64 ")
+                .append(val2)
+                .append(", ")
+                .append(val1)
+                .append("\n");
+        register++;
+    }
+
+    static void mult_float(String val1, String val2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = fmul float ")
+                .append(val1)
+                .append(", ")
+                .append(val2)
                 .append("\n");
         register++;
     }
@@ -182,6 +325,17 @@ class LLVMGenerator {
         register++;
     }
 
+    static void div_float(String val1, String val2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = fdiv float ")
+                .append(val2)
+                .append(", ")
+                .append(val1)
+                .append("\n");
+        register++;
+    }
+
     static void div_double(String val1, String val2) {
         MAIN_TEXT.append("%")
                 .append(register)
@@ -193,7 +347,52 @@ class LLVMGenerator {
         register++;
     }
 
-    static void sitofp(String id) {
+    static void sext_i32(String id) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = sext i32 ")
+                .append(id)
+                .append(" to i64\n");
+        register++;
+    }
+
+    static void trunc_i64(String id) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = trunc i64 ")
+                .append(id)
+                .append(" to i32\n");
+        register++;
+    }
+
+    static void fpext_float(String id) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = fpext float ")
+                .append(id)
+                .append(" to double\n");
+        register++;
+    }
+
+    static void fptrunc_double(String id) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = fptrunc double ")
+                .append(id)
+                .append(" to float\n");
+        register++;
+    }
+
+    static void sitofp_int32_float(String id) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = sitofp i32 ")
+                .append(id)
+                .append(" to float\n");
+        register++;
+    }
+
+    static void sitofp_i32_double(String id) {
         MAIN_TEXT.append("%")
                 .append(register)
                 .append(" = sitofp i32 ")
@@ -202,12 +401,57 @@ class LLVMGenerator {
         register++;
     }
 
-    static void fptosi(String id) {
+    static void sitofp_i64_float(String id) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = sitofp i64 ")
+                .append(id)
+                .append(" to float\n");
+        register++;
+    }
+
+    static void sitofp_i64_double(String id) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = sitofp i64 ")
+                .append(id)
+                .append(" to double\n");
+        register++;
+    }
+
+    static void fptosi_float_i32(String id) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = fptosi float ")
+                .append(id)
+                .append(" to i32\n");
+        register++;
+    }
+
+    static void fptosi_float_i64(String id) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = fptosi float ")
+                .append(id)
+                .append(" to i64\n");
+        register++;
+    }
+
+    static void fptosi_double_i32(String id) {
         MAIN_TEXT.append("%")
                 .append(register)
                 .append(" = fptosi double ")
                 .append(id)
                 .append(" to i32\n");
+        register++;
+    }
+
+    static void fptosi_double_i64(String id) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = fptosi double ")
+                .append(id)
+                .append(" to i64\n");
         register++;
     }
 
