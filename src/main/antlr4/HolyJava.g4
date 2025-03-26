@@ -23,14 +23,18 @@ expr1:    expr2			        #single1
         ;
 
 expr2:    value             #val
+        | TOFLOAT expr2     #tofloat
         | TOINT expr2		#toint
-        | TOREAL expr2		#toreal
+        | TOLONG expr2		#tolong
+        | TODOUBLE expr2	#todouble
         | '(' expr0 ')'		#par
         ;
 
 value:    ID            #id
+        | FLOAT			#float
         | INT			#int
-        | REAL			#real
+        | LONG			#long
+        | DOUBLE		#double
         | STRING        #string
         ;
 
@@ -43,16 +47,28 @@ PRINT: 'print'
 TOINT: '(int)'
     ;
 
-TOREAL: '(real)'
+TOLONG: '(long)'
+    ;
+
+TOFLOAT: '(float)'
+    ;
+
+TODOUBLE: '(double)'
     ;
 
 ID: ('a'..'z'|'A'..'Z')+
    ;
 
-REAL: '0'..'9'+'.''0'..'9'+
+FLOAT: '0'..'9'+'.''0'..'9'+'f'
     ;
 
-INT: '0'..'9'+
+DOUBLE: '0'..'9'+'.''0'..'9'+
+    ;
+
+INT: '0'..'9'+'i'
+    ;
+
+LONG: '0'..'9'+
     ;
 
 STRING :  '"' ( ~('\\'|'"') )* '"'

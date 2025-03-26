@@ -1,5 +1,6 @@
 package pl.edu.pw.ee.llvm;
 
 public enum PrimitiveType {
-    INT, REAL, UNKNOWN, STRING
+    INT, LONG, FLOAT, DOUBLE, UNKNOWN, STRING
+
 }
