@@ -7,9 +7,10 @@ package pl.edu.pw.ee;
 programme: ( statement? SEMICOLON )*
 ;
 
-statement:    ID '=' expr0		#assign
-            | PRINT ID   		#print
-            | READ ID		    #read
+statement:    ID '[' expr0 ']' '=' expr0	#assignarray
+            | ID '=' expr0		            #assign
+            | PRINT ID   		            #print
+            | READ ID		                #read
 ;
 
 expr0:    expr1			        #single0

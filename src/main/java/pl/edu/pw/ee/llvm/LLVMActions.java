@@ -29,6 +29,33 @@ class LLVMActions extends HolyJavaBaseListener {
     }
 
     @Override
+    public void exitAssignarray(HolyJavaParser.AssignarrayContext context) {
+        final var ID = context.ID().getText();
+        final var array = variables.get(ID);
+
+        if (array == null) {
+            error(context.getStart().getLine(), "unknown array " + ID);
+        }
+
+        final var value = stack.pop();
+        final var index = stack.pop();
+
+        if (index.type != PrimitiveType.INT && index.type != PrimitiveType.LONG) {
+            error(context.getStart().getLine(), "array index must be int or long");
+        }
+
+        if (index.type == PrimitiveType.INT) {
+            LLVMGenerator.sext_i32(index.name);
+        }
+
+        if (value.type != array.type) {
+            error(context.getStart().getLine(), "array type mismatch");
+        }
+
+        LLVMGenerator.assign_array_item(array.name, array.length, index.name, value.name, value.type.llvmType());
+    }
+
+    @Override
     public void exitAssign(HolyJavaParser.AssignContext context) {
         final var ID = context.ID().getText();
         final var variable = stack.pop();
@@ -247,7 +274,7 @@ class LLVMActions extends HolyJavaBaseListener {
 
         for (var index = 0; index < array.length; index++) {
             final var value = array.values.get(index);
-            LLVMGenerator.assign_array_item(array.name, array.length, index, value.name, value.type.llvmType());
+            LLVMGenerator.assign_array_item(array.name, array.length, String.valueOf(index), value.name, value.type.llvmType());
         }
 
         if (context.getParent() instanceof HolyJavaParser.ArrayitemContext) {

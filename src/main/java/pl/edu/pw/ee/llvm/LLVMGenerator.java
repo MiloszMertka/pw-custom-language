@@ -88,7 +88,7 @@ class LLVMGenerator {
                 .append("]\n");
     }
 
-    static void assign_array_item(String id, int length, int index, String value, String type) {
+    static void assign_array_item(String id, int length, String index, String value, String type) {
         MAIN_TEXT.append("%")
                 .append(register)
                 .append(" = getelementptr inbounds [")
