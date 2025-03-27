@@ -413,6 +413,192 @@ class LLVMGenerator {
         register++;
     }
 
+    static void load_bool(String id) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = load i1, i1* %")
+                .append(id)
+                .append("\n");
+        register++;
+    }
+
+    static void declare_bool(String id) {
+        MAIN_TEXT.append("%")
+                .append(id)
+                .append(" = alloca i1\n");
+    }
+
+    static void assign_bool(String id, String value) {
+        MAIN_TEXT.append("store i1 ")
+                .append(value)
+                .append(", i1* %")
+                .append(id)
+                .append("\n");
+    }
+
+    static void printf_bool(String id) {
+        load_bool(id);
+
+        // Porównanie, czy wartość boola to 1 (true) czy 0 (false)
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = icmp eq i1 %")
+                .append(register - 1)
+                .append(", 1\n");
+        register++;
+
+        // Konwersja wyniku porównania na string ("true" lub "false")
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = select i1 %")
+                .append(register - 1)
+                .append(", i8* @truetext, i8* @falsetext\n");
+        register++;
+
+        // Wywołanie printf z formatem %s
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @strpb, i32 0, i32 0), i8* %")
+                .append(register - 1)
+                .append(")\n");
+        register++;
+    }
+
+    static void and_bool(String val1, String val2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = and i1 ")
+                .append(val1)
+                .append(", ")
+                .append(val2)
+                .append("\n");
+        register++;
+    }
+
+    static void and_bool_sc(String val1, String val2) {
+        String labelTrue = "and_true_" + register;
+        String labelNotTrue = "and_not_true_" + register;
+        String labelEnd = "and_end_" + register;
+        String result = "%" + register;
+        String trueVal = "%true_" + register;
+        String falseVal = "%false_" + register;
+        register++;
+
+        // Jeśli val1 jest fałszywe, skaczemy od razu do końca
+        MAIN_TEXT.append("br i1 ")
+                .append(val1)
+                .append(", label %")
+                .append(labelTrue)
+                .append(", label %")
+                .append(labelNotTrue)
+                .append("\n");
+
+        // Blok jeśli val1 == true sprawdzamy val2
+        MAIN_TEXT.append(labelTrue)
+                .append(":\n");
+        MAIN_TEXT.append(trueVal)
+                .append(" = and i1 ")
+                .append(val1)
+                .append(", ")
+                .append(val2)
+                .append("\n");
+        MAIN_TEXT.append("br label %")
+                .append(labelEnd)
+                .append("\n");
+
+        // jesli nie to zwracamy zero
+        MAIN_TEXT.append(labelNotTrue)
+                 .append(":\n");
+        MAIN_TEXT.append(falseVal)
+                 .append(" = and i1 0, 0\n");
+        MAIN_TEXT.append("br label %")
+                 .append(labelEnd)
+                 .append("\n");
+
+        MAIN_TEXT.append(labelEnd)
+                .append(":\n")
+                .append(result)
+                .append(" = phi i1 [ ").append(trueVal).append(", %").append(labelTrue)
+                .append(" ], [ ").append(falseVal).append(", %").append(labelNotTrue).append(" ]\n");
+    }
+
+    static void or_bool_sc(String val1, String val2) {
+        String labelTrue = "and_true_" + register;
+        String labelNotTrue = "and_not_true_" + register;
+        String labelEnd = "and_end_" + register;
+        String result = "%" + register;
+        String trueVal = "%true_" + register;
+        String falseVal = "%false_" + register;
+        register++;
+
+        // Jeśli val1 jest prawdziwe, skaczemy od labelTrue
+        MAIN_TEXT.append("br i1 ")
+                .append(val1)
+                .append(", label %")
+                .append(labelTrue)
+                .append(", label %")
+                .append(labelNotTrue)
+                .append("\n");
+
+        // Blok jeśli val1 == true zwracamy od razu prawda
+        MAIN_TEXT.append(labelTrue)
+                .append(":\n");
+        MAIN_TEXT.append(trueVal)
+                .append(" = or i1 1, 1")
+                .append("\n")
+                .append("br label %")
+                .append(labelEnd)
+                .append("\n");
+
+        // Blok jesli val1 != true obliczamy or
+        MAIN_TEXT.append(labelNotTrue)
+                .append(":\n");
+        MAIN_TEXT.append(falseVal)
+                .append(" = or i1 ").append(val1).append(", ").append(val2)
+                .append("\n")
+                .append("br label %")
+                .append(labelEnd)
+                .append("\n");
+
+        // Blok końcowy
+        MAIN_TEXT.append(labelEnd)
+                .append(":\n")
+                .append(result)
+                .append(" = phi i1 [ ").append(trueVal).append(", %").append(labelTrue)
+                .append(" ], [ ").append(falseVal).append(", %").append(labelNotTrue).append(" ]\n");
+    }
+
+    static void or_bool(String val1, String val2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = or i1 ")
+                .append(val1)
+                .append(", ")
+                .append(val2)
+                .append("\n");
+        register++;
+    }
+
+    static void xor_bool(String val1, String val2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = xor i1 ")
+                .append(val1)
+                .append(", ")
+                .append(val2)
+                .append("\n");
+        register++;
+    }
+
+    static void negation(String val) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = xor i1 ")
+                .append(val)
+                .append(", 1\n");  // NOT = XOR z 1
+        register++;
+    }
+
     static void add_i32(String val1, String val2) {
         MAIN_TEXT.append("%")
                 .append(register)
@@ -787,6 +973,9 @@ class LLVMGenerator {
                 "@strpd = constant [4 x i8] c\"%f\\0A\\00\"\n" +
                 "@strs = constant [5 x i8] c\"%10s\\00\"\n" +
                 "@strspi = constant [3 x i8] c\"%d\\00\"\n" +
+                "@strpb = constant [4 x i8] c\"%s\\0A\\00\"\n" +
+                "@truetext = constant [5 x i8] c\"true\\00\"\n" +
+                "@falsetext = constant [6 x i8] c\"false\\00\"\n" +
                 HEADER_TEXT +
                 "define i32 @main() nounwind{\n" +
                 MAIN_TEXT +

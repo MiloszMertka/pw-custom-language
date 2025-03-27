@@ -11,3 +11,9 @@ a = [1, 2, 3];
 a[1] = 5;
 b = a[1];
 print b;
+
+i = true;
+j = false;
+k = true;
+v = j & i & k;
+print v;
