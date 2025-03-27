@@ -7,11 +7,23 @@ package pl.edu.pw.ee;
 programme: ( statement? SEMICOLON )*
 ;
 
-statement:    ID '[' expr0 ']' '=' expr0	#assignarray
-            | ID '=' expr0		            #assign
-            | PRINT ID   		            #print
-            | READ ID		                #read
+statement:    ID '[' expr0 ']' '[' expr0 ']' '=' expr0	#assignmatrix
+            | ID '[' expr0 ']' '=' expr0	            #assignarray
+            | ID '=' expr0		                        #assign
+            | ID '=' '[' matitem+ ']'                   #matrix
+            | ID '=' arr                                #array
+            | PRINT ID   		                        #print
+            | READ ID		                            #read
 ;
+
+matitem: arr #matrixitem
+    ;
+
+arr: '[' arritem (',' arritem)* ']' #arraydef
+    ;
+
+arritem: expr0 #arrayitem
+    ;
 
 expr0:    expr1			        #single0
         | expr0 OR expr1	    #or
@@ -36,7 +48,6 @@ expr4:    expr5			        #single4
         ;
 
 expr5:    value                     #val
-        | '[' item (',' item)* ']'  #array
         | NEG expr5		            #neg
         | TOFLOAT expr2             #tofloat
         | TOINT expr2		        #toint
@@ -45,17 +56,15 @@ expr5:    value                     #val
         | '(' expr0 ')'		        #par
         ;
 
-item: expr0 #arrayitem
-    ;
-
-value:    ID '[' expr0 ']'  #arrayvalue
-        | ID                #id
-        | FLOAT			    #float
-        | INT			    #int
-        | LONG			    #long
-        | DOUBLE		    #double
-        | STRING            #string
-        | BOOL              #bool
+value:    ID '[' expr0 ']' '[' expr0 ']' #matrixvalue
+        | ID '[' expr0 ']'	             #arrayvalue
+        | ID                             #id
+        | FLOAT			                 #float
+        | INT			                 #int
+        | LONG			                 #long
+        | DOUBLE		                 #double
+        | STRING                         #string
+        | BOOL                           #bool
         ;
 
 READ: 'read'

@@ -7,6 +7,7 @@ class LLVMGenerator {
     static int register = 1;
     static int str = 1;
     static int arr = 1;
+    static int mat = 1;
 
     static void printf_i32(String id) {
         load_i32(id);
@@ -88,6 +89,18 @@ class LLVMGenerator {
                 .append("]\n");
     }
 
+    static void declare_matrix(String id, int rows, int columns, String type) {
+        MAIN_TEXT.append("%")
+                .append(id)
+                .append(" = alloca [")
+                .append(rows)
+                .append(" x [")
+                .append(columns)
+                .append(" x ")
+                .append(type)
+                .append("]*]\n");
+    }
+
     static void assign_array_item(String id, int length, String index, String value, String type) {
         MAIN_TEXT.append("%")
                 .append(register)
@@ -103,6 +116,104 @@ class LLVMGenerator {
                 .append(id)
                 .append(", i64 0, i64 ")
                 .append(index)
+                .append("\n");
+        MAIN_TEXT.append("store ")
+                .append(type)
+                .append(" ")
+                .append(value)
+                .append(", ")
+                .append(type)
+                .append("* %")
+                .append(register)
+                .append("\n");
+        register++;
+    }
+
+    static void assign_matrix_row(String id, int rows, int columns, String index, String value, String type) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = getelementptr inbounds [")
+                .append(rows)
+                .append(" x [")
+                .append(columns)
+                .append(" x ")
+                .append(type)
+                .append("]*], [")
+                .append(rows)
+                .append(" x [")
+                .append(columns)
+                .append(" x ")
+                .append(type)
+                .append("]*]* %")
+                .append(id)
+                .append(", i64 0, i64 ")
+                .append(index)
+                .append("\n");
+        MAIN_TEXT.append("store [")
+                .append(columns)
+                .append(" x ")
+                .append(type)
+                .append("]* %")
+                .append(value)
+                .append(", [")
+                .append(columns)
+                .append(" x ")
+                .append(type)
+                .append("]** %")
+                .append(register)
+                .append("\n");
+        register++;
+    }
+
+    static void assign_matrix_item(String id, int length, int rowLength, String rowIndex, String columnIndex, String value, String type) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = getelementptr inbounds [")
+                .append(length)
+                .append(" x [")
+                .append(rowLength)
+                .append(" x ")
+                .append(type)
+                .append("]*], [")
+                .append(length)
+                .append(" x [")
+                .append(rowLength)
+                .append(" x ")
+                .append(type)
+                .append("]*]* %")
+                .append(id)
+                .append(", i64 0, i64 ")
+                .append(rowIndex)
+                .append("\n");
+        register++;
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = load [")
+                .append(rowLength)
+                .append(" x ")
+                .append(type)
+                .append("]*, [")
+                .append(rowLength)
+                .append(" x ")
+                .append(type)
+                .append("]** %")
+                .append(register - 1)
+                .append("\n");
+        register++;
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = getelementptr inbounds [")
+                .append(rowLength)
+                .append(" x ")
+                .append(type)
+                .append("], [")
+                .append(rowLength)
+                .append(" x ")
+                .append(type)
+                .append("]* %")
+                .append(register - 1)
+                .append(", i64 0, i64 ")
+                .append(columnIndex)
                 .append("\n");
         MAIN_TEXT.append("store ")
                 .append(type)
@@ -225,6 +336,69 @@ class LLVMGenerator {
                 .append(id)
                 .append(", i64 0, i64 ")
                 .append(index)
+                .append("\n");
+        register++;
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = load ")
+                .append(type)
+                .append(", ")
+                .append(type)
+                .append("* %")
+                .append(register - 1)
+                .append("\n");
+        register++;
+    }
+
+    static void load_matrix_value(String id, int length, int rowLength, String rowIndex, String columnIndex, String type) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = getelementptr inbounds [")
+                .append(length)
+                .append(" x [")
+                .append(rowLength)
+                .append(" x ")
+                .append(type)
+                .append("]*], [")
+                .append(length)
+                .append(" x [")
+                .append(rowLength)
+                .append(" x ")
+                .append(type)
+                .append("]*]* %")
+                .append(id)
+                .append(", i64 0, i64 ")
+                .append(rowIndex)
+                .append("\n");
+        register++;
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = load [")
+                .append(rowLength)
+                .append(" x ")
+                .append(type)
+                .append("]*, [")
+                .append(rowLength)
+                .append(" x ")
+                .append(type)
+                .append("]** %")
+                .append(register - 1)
+                .append("\n");
+        register++;
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = getelementptr inbounds [")
+                .append(rowLength)
+                .append(" x ")
+                .append(type)
+                .append("], [")
+                .append(rowLength)
+                .append(" x ")
+                .append(type)
+                .append("]* %")
+                .append(register - 1)
+                .append(", i64 0, i64 ")
+                .append(columnIndex)
                 .append("\n");
         register++;
         MAIN_TEXT.append("%")
