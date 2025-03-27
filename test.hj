@@ -1,4 +1,5 @@
-x = [1, 2, 3];
-x[1] = 4;
-y = x[1];
-print y;
+x = true;
+y = false;
+c = true;
+v = y & x & c;
+print v;

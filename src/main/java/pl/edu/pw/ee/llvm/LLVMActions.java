@@ -46,7 +46,17 @@ class LLVMActions extends HolyJavaBaseListener {
         }
 
         if (index.type == PrimitiveType.INT) {
+            var subindex = index.name.substring(0, index.name.length() - 1);
+            var subIndexValue = Integer.parseInt(subindex);
+            if (subIndexValue > (array.length -1) || subIndexValue < 0) {
+                error(context.getStart().getLine(), "array index out of range");
+            }
             LLVMGenerator.sext_i32(index.name);
+        }
+
+        var indexValue = Integer.parseInt(index.name);
+        if (indexValue > (array.length -1) || indexValue < 0) {
+            error(context.getStart().getLine(), "array index out of range");
         }
 
         if (value.type != array.type) {
@@ -469,7 +479,17 @@ class LLVMActions extends HolyJavaBaseListener {
         }
 
         if (index.type == PrimitiveType.INT) {
+            var subindex = index.name.substring(0, index.name.length() - 1);
+            var subIndexValue = Integer.parseInt(subindex);
+            if (subIndexValue > (array.length -1) || subIndexValue < 0) {
+                error(context.getStart().getLine(), "array index out of range");
+            }
             LLVMGenerator.sext_i32(index.name);
+        }
+
+        var indexValue = Integer.parseInt(index.name);
+        if (indexValue > (array.length -1) || indexValue < 0) {
+            error(context.getStart().getLine(), "array index out of range");
         }
 
         LLVMGenerator.load_array_value(array.name, array.length, index.name, array.type.llvmType());
