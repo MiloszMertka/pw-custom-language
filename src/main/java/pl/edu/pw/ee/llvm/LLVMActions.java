@@ -17,6 +17,7 @@ class LLVMActions extends HolyJavaBaseListener {
     private final Map<String, Value> variables = new HashMap<>();
     private final Stack<Value> stack = new Stack<>();
     private final Stack<Array> arrayStack = new Stack<>();
+    private final Stack<Matrix> matrixStack = new Stack<>();
 
     @Override
     public void exitProgramme(HolyJavaParser.ProgrammeContext context) {
@@ -26,6 +27,42 @@ class LLVMActions extends HolyJavaBaseListener {
         } catch (IOException ioException) {
             throw new IllegalStateException(ioException);
         }
+    }
+
+    @Override
+    public void exitAssignmatrix(HolyJavaParser.AssignmatrixContext context) {
+        final var ID = context.ID().getText();
+        final var matrix = (Matrix) variables.get(ID);
+
+        if (matrix == null) {
+            error(context.getStart().getLine(), "unknown matrix " + ID);
+        }
+
+        final var value = stack.pop();
+        final var columnIndex = stack.pop();
+        final var rowIndex = stack.pop();
+
+        if (rowIndex.type != PrimitiveType.INT && rowIndex.type != PrimitiveType.LONG) {
+            error(context.getStart().getLine(), "matrix row index must be int or long");
+        }
+
+        if (columnIndex.type != PrimitiveType.INT && columnIndex.type != PrimitiveType.LONG) {
+            error(context.getStart().getLine(), "matrix column index must be int or long");
+        }
+
+        if (rowIndex.type == PrimitiveType.INT) {
+            LLVMGenerator.sext_i32(rowIndex.name);
+        }
+
+        if (columnIndex.type == PrimitiveType.INT) {
+            LLVMGenerator.sext_i32(columnIndex.name);
+        }
+
+        if (value.type != matrix.type) {
+            error(context.getStart().getLine(), "matrix type mismatch");
+        }
+
+        LLVMGenerator.assign_matrix_item(matrix.name, matrix.length, matrix.rowLength, rowIndex.name, columnIndex.name, value.name, value.type.llvmType());
     }
 
     @Override
@@ -63,10 +100,6 @@ class LLVMActions extends HolyJavaBaseListener {
         if (!variables.containsKey(ID)) {
             variables.put(ID, variable);
 
-            if (variable instanceof Array) {
-                return;
-            }
-
             if (variable.type == PrimitiveType.INT) {
                 LLVMGenerator.declare_i32(ID);
             }
@@ -88,10 +121,6 @@ class LLVMActions extends HolyJavaBaseListener {
             }
         }
 
-        if (variable instanceof Array) {
-            return;
-        }
-
         if (variable.type == PrimitiveType.INT) {
             LLVMGenerator.assign_i32(ID, variable.name);
         }
@@ -111,6 +140,35 @@ class LLVMActions extends HolyJavaBaseListener {
         if (variable.type == PrimitiveType.STRING) {
             LLVMGenerator.assign_string(ID, variable.name);
         }
+    }
+
+    @Override
+    public void enterMatrix(HolyJavaParser.MatrixContext context) {
+        final var id = "mat" + (LLVMGenerator.mat - 1);
+        final var matrix = new Matrix(id, PrimitiveType.UNKNOWN, 0);
+        matrixStack.push(matrix);
+        LLVMGenerator.mat++;
+    }
+
+    @Override
+    public void exitMatrix(HolyJavaParser.MatrixContext context) {
+        final var matrix = matrixStack.pop();
+        LLVMGenerator.declare_matrix(matrix.name, matrix.length, matrix.rowLength, matrix.type.llvmType());
+
+        for (var index = 0; index < matrix.length; index++) {
+            final var row = matrix.rows.get(index);
+            LLVMGenerator.assign_matrix_row(matrix.name, matrix.length, matrix.rowLength, String.valueOf(index), row.name, matrix.type.llvmType());
+        }
+
+        final var id = context.ID().getText();
+        variables.put(id, matrix);
+    }
+
+    @Override
+    public void exitArray(HolyJavaParser.ArrayContext context) {
+        final var id = context.ID().getText();
+        final var array = stack.pop();
+        variables.put(id, array);
     }
 
     @Override
@@ -137,6 +195,66 @@ class LLVMActions extends HolyJavaBaseListener {
         final var value = new Value(ID, PrimitiveType.STRING, BUFFER_SIZE - 1);
         variables.put(ID, value);
         LLVMGenerator.scanf(ID, BUFFER_SIZE);
+    }
+
+    @Override
+    public void exitMatrixitem(HolyJavaParser.MatrixitemContext context) {
+        final var array = (Array) stack.pop();
+        final var matrix = matrixStack.peek();
+        matrix.rows.add(array);
+        matrix.length++;
+
+        if (matrix.type == PrimitiveType.UNKNOWN) {
+            matrix.type = array.type;
+            matrix.rowLength = array.length;
+            return;
+        }
+
+        if (matrix.rowLength != array.length) {
+            error(context.getStart().getLine(), "matrix row length mismatch");
+        }
+
+        if (matrix.type != array.type) {
+            error(context.getStart().getLine(), "matrix type mismatch");
+        }
+    }
+
+    @Override
+    public void enterArraydef(HolyJavaParser.ArraydefContext context) {
+        final var id = "arr" + (LLVMGenerator.arr - 1);
+        final var array = new Array(id, PrimitiveType.UNKNOWN, 0);
+        arrayStack.push(array);
+        LLVMGenerator.arr++;
+    }
+
+    @Override
+    public void exitArraydef(HolyJavaParser.ArraydefContext context) {
+        final var array = arrayStack.pop();
+        LLVMGenerator.declare_array(array.name, array.length, array.type.llvmType());
+
+        for (var index = 0; index < array.length; index++) {
+            final var value = array.values.get(index);
+            LLVMGenerator.assign_array_item(array.name, array.length, String.valueOf(index), value.name, value.type.llvmType());
+        }
+
+        stack.push(array);
+    }
+
+    @Override
+    public void exitArrayitem(HolyJavaParser.ArrayitemContext context) {
+        final var value = stack.pop();
+        final var array = arrayStack.peek();
+        array.values.add(value);
+        array.length++;
+
+        if (array.type == PrimitiveType.UNKNOWN) {
+            array.type = value.type;
+            return;
+        }
+
+        if (array.type != value.type) {
+            error(context.getStart().getLine(), "array type mismatch");
+        }
     }
 
     @Override
@@ -260,31 +378,6 @@ class LLVMActions extends HolyJavaBaseListener {
     }
 
     @Override
-    public void enterArray(HolyJavaParser.ArrayContext context) {
-        final var id = "arr" + (LLVMGenerator.arr - 1);
-        final var array = new Array(id, PrimitiveType.UNKNOWN, 0);
-        arrayStack.push(array);
-        LLVMGenerator.arr++;
-    }
-
-    @Override
-    public void exitArray(HolyJavaParser.ArrayContext context) {
-        final var array = arrayStack.pop();
-        LLVMGenerator.declare_array(array.name, array.length, array.type.llvmType());
-
-        for (var index = 0; index < array.length; index++) {
-            final var value = array.values.get(index);
-            LLVMGenerator.assign_array_item(array.name, array.length, String.valueOf(index), value.name, value.type.llvmType());
-        }
-
-        if (context.getParent() instanceof HolyJavaParser.ArrayitemContext) {
-            return;
-        }
-
-        stack.push(array);
-    }
-
-    @Override
     public void exitTofloat(HolyJavaParser.TofloatContext context) {
         final var value = stack.pop();
 
@@ -377,20 +470,34 @@ class LLVMActions extends HolyJavaBaseListener {
     }
 
     @Override
-    public void exitArrayitem(HolyJavaParser.ArrayitemContext context) {
-        final var value = stack.pop();
-        final var array = arrayStack.peek();
-        array.values.add(value);
-        array.length++;
+    public void exitMatrixvalue(HolyJavaParser.MatrixvalueContext context) {
+        final var matrix = (Matrix) variables.get(context.ID().getText());
 
-        if (array.type == PrimitiveType.UNKNOWN) {
-            array.type = value.type;
-            return;
+        if (matrix == null) {
+            error(context.getStart().getLine(), "unknown matrix " + context.ID().getText());
         }
 
-        if (array.type != value.type) {
-            error(context.getStart().getLine(), "array type mismatch");
+        final var columnIndex = stack.pop();
+        final var rowIndex = stack.pop();
+
+        if (rowIndex.type != PrimitiveType.INT && rowIndex.type != PrimitiveType.LONG) {
+            error(context.getStart().getLine(), "matrix row index must be int or long");
         }
+
+        if (columnIndex.type != PrimitiveType.INT && columnIndex.type != PrimitiveType.LONG) {
+            error(context.getStart().getLine(), "matrix column index must be int or long");
+        }
+
+        if (rowIndex.type == PrimitiveType.INT) {
+            LLVMGenerator.sext_i32(rowIndex.name);
+        }
+
+        if (columnIndex.type == PrimitiveType.INT) {
+            LLVMGenerator.sext_i32(columnIndex.name);
+        }
+
+        LLVMGenerator.load_matrix_value(matrix.name, matrix.length, matrix.rowLength, rowIndex.name, columnIndex.name, matrix.type.llvmType());
+        stack.push(new Value("%" + (LLVMGenerator.register - 1), matrix.type));
     }
 
     @Override
