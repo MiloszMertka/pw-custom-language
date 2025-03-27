@@ -6,6 +6,7 @@ public enum PrimitiveType {
     FLOAT("float"),
     DOUBLE("double"),
     STRING("i8*"),
+    BOOLEAN("i1"),
     UNKNOWN("");
 
     private final String llvmType;

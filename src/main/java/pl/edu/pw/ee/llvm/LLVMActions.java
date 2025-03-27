@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Stack;
 
 class LLVMActions extends HolyJavaBaseListener {
@@ -45,7 +46,17 @@ class LLVMActions extends HolyJavaBaseListener {
         }
 
         if (index.type == PrimitiveType.INT) {
+            var subindex = index.name.substring(0, index.name.length() - 1);
+            var subIndexValue = Integer.parseInt(subindex);
+            if (subIndexValue > (array.length -1) || subIndexValue < 0) {
+                error(context.getStart().getLine(), "array index out of range");
+            }
             LLVMGenerator.sext_i32(index.name);
+        }
+
+        var indexValue = Integer.parseInt(index.name);
+        if (indexValue > (array.length -1) || indexValue < 0) {
+            error(context.getStart().getLine(), "array index out of range");
         }
 
         if (value.type != array.type) {
@@ -86,6 +97,10 @@ class LLVMActions extends HolyJavaBaseListener {
             if (variable.type == PrimitiveType.STRING) {
                 LLVMGenerator.declare_string(ID);
             }
+
+            if (variable.type == PrimitiveType.BOOLEAN) {
+                LLVMGenerator.declare_bool(ID);
+            }
         }
 
         if (variable instanceof Array) {
@@ -111,6 +126,10 @@ class LLVMActions extends HolyJavaBaseListener {
         if (variable.type == PrimitiveType.STRING) {
             LLVMGenerator.assign_string(ID, variable.name);
         }
+
+        if (variable.type == PrimitiveType.BOOLEAN) {
+            LLVMGenerator.assign_bool(ID, variable.name);
+        }
     }
 
     @Override
@@ -124,6 +143,7 @@ class LLVMActions extends HolyJavaBaseListener {
                 case FLOAT -> LLVMGenerator.printf_float(ID);
                 case DOUBLE -> LLVMGenerator.printf_double(ID);
                 case STRING -> LLVMGenerator.printf_string(ID);
+                case BOOLEAN -> LLVMGenerator.printf_bool(ID);
                 case UNKNOWN -> error(context.getStart().getLine(), "unknown variable " + ID);
             }
         } else {
@@ -285,6 +305,57 @@ class LLVMActions extends HolyJavaBaseListener {
     }
 
     @Override
+    public void exitAnd(HolyJavaParser.AndContext context) {
+        final var value1 = stack.pop();
+        final var value2 = stack.pop();
+
+        if (value1.type != PrimitiveType.BOOLEAN || value2.type != PrimitiveType.BOOLEAN) {
+            error(context.getStart().getLine(), "AND type mismatch");
+        }
+
+        LLVMGenerator.and_bool_sc(value1.name, value2.name);
+        stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
+    }
+
+    @Override
+    public void exitOr(HolyJavaParser.OrContext context) {
+        final var value1 = stack.pop();
+        final var value2 = stack.pop();
+
+        if (value1.type != PrimitiveType.BOOLEAN || value2.type != PrimitiveType.BOOLEAN) {
+            error(context.getStart().getLine(), "OR type mismatch");
+        }
+
+        LLVMGenerator.or_bool_sc(value1.name, value2.name);
+        stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
+    }
+
+    @Override
+    public void exitXor(HolyJavaParser.XorContext context) {
+        final var value1 = stack.pop();
+        final var value2 = stack.pop();
+
+        if (value1.type != PrimitiveType.BOOLEAN || value2.type != PrimitiveType.BOOLEAN) {
+            error(context.getStart().getLine(), "XOR type mismatch");
+        }
+
+        LLVMGenerator.xor_bool(value1.name, value2.name);
+        stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
+    }
+
+    @Override
+    public void exitNeg(HolyJavaParser.NegContext context) {
+        final var value1 = stack.pop();
+
+        if (value1.type != PrimitiveType.BOOLEAN) {
+            error(context.getStart().getLine(), "NEG type mismatch");
+        }
+
+        LLVMGenerator.negation(value1.name);
+        stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
+    }
+
+    @Override
     public void exitTofloat(HolyJavaParser.TofloatContext context) {
         final var value = stack.pop();
 
@@ -408,7 +479,17 @@ class LLVMActions extends HolyJavaBaseListener {
         }
 
         if (index.type == PrimitiveType.INT) {
+            var subindex = index.name.substring(0, index.name.length() - 1);
+            var subIndexValue = Integer.parseInt(subindex);
+            if (subIndexValue > (array.length -1) || subIndexValue < 0) {
+                error(context.getStart().getLine(), "array index out of range");
+            }
             LLVMGenerator.sext_i32(index.name);
+        }
+
+        var indexValue = Integer.parseInt(index.name);
+        if (indexValue > (array.length -1) || indexValue < 0) {
+            error(context.getStart().getLine(), "array index out of range");
         }
 
         LLVMGenerator.load_array_value(array.name, array.length, index.name, array.type.llvmType());
@@ -429,6 +510,7 @@ class LLVMActions extends HolyJavaBaseListener {
             case LONG -> LLVMGenerator.load_i64(ID);
             case FLOAT -> LLVMGenerator.load_float(ID);
             case DOUBLE -> LLVMGenerator.load_double(ID);
+            case BOOLEAN -> LLVMGenerator.load_bool(ID);
             case STRING -> LLVMGenerator.load_string(ID);
         }
 
@@ -466,6 +548,15 @@ class LLVMActions extends HolyJavaBaseListener {
         LLVMGenerator.constant_string(content);
         final var id = "str" + (LLVMGenerator.str - 1);
         stack.push(new Value(id, PrimitiveType.STRING, content.length()));
+    }
+
+    @Override
+    public void exitBool(HolyJavaParser.BoolContext context) {
+        if (Objects.equals(context.BOOL().getText(), "true")) {
+            stack.push(new Value("1", PrimitiveType.BOOLEAN));
+        } else {
+            stack.push(new Value("0", PrimitiveType.BOOLEAN));
+        }
     }
 
     private void error(int line, String message) {

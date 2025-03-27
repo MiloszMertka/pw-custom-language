@@ -14,34 +14,48 @@ statement:    ID '[' expr0 ']' '=' expr0	#assignarray
 ;
 
 expr0:    expr1			        #single0
-        | expr1 ADD expr1	    #add
-        | expr1 SUBSTRACT expr1	#sub
+        | expr0 OR expr1	    #or
         ;
 
 expr1:    expr2			        #single1
-        | expr2 MULT expr2	    #mult
-        | expr2 DIVIDE expr2	#div
+        | expr1 XOR expr2	    #xor
         ;
 
-expr2:    value                         #val
-        | '[' item (',' item)* ']'      #array
-        | TOFLOAT expr2                 #tofloat
-        | TOINT expr2		            #toint
-        | TOLONG expr2		            #tolong
-        | TODOUBLE expr2	            #todouble
-        | '(' expr0 ')'		            #par
+expr2:    expr3			        #single2
+        | expr2 AND expr3	    #and
+        ;
+
+expr3:    expr4			        #single3
+        | expr3 ADD expr4	    #add
+        | expr3 SUBSTRACT expr4	#sub
+        ;
+
+expr4:    expr5			        #single4
+        | expr4 MULT expr5	    #mult
+        | expr4 DIVIDE expr5	#div
+        ;
+
+expr5:    value                     #val
+        | '[' item (',' item)* ']'  #array
+        | NEG expr5		            #neg
+        | TOFLOAT expr2             #tofloat
+        | TOINT expr2		        #toint
+        | TOLONG expr2		        #tolong
+        | TODOUBLE expr2	        #todouble
+        | '(' expr0 ')'		        #par
         ;
 
 item: expr0 #arrayitem
     ;
 
-value:    ID '[' expr0 ']'	#arrayvalue
+value:    ID '[' expr0 ']'  #arrayvalue
         | ID                #id
         | FLOAT			    #float
         | INT			    #int
         | LONG			    #long
         | DOUBLE		    #double
         | STRING            #string
+        | BOOL              #bool
         ;
 
 READ: 'read'
@@ -60,6 +74,9 @@ TOFLOAT: '(float)'
     ;
 
 TODOUBLE: '(double)'
+    ;
+
+BOOL: 'true' | 'false'
     ;
 
 ID: ('a'..'z'|'A'..'Z')+
@@ -90,6 +107,18 @@ DIVIDE: '/'
     ;
 
 MULT: '*'
+    ;
+
+AND: '&'
+    ;
+
+OR: '|'
+    ;
+
+XOR: '^'
+    ;
+
+NEG: '!'
     ;
 
 SEMICOLON: ';'
