@@ -1,5 +1,4 @@
-x = false;
-y = true;
-g = true;
-z = x & g & y;
-print z;
+x = [1, 2, 3];
+x[1] = 4;
+y = x[1];
+print y;

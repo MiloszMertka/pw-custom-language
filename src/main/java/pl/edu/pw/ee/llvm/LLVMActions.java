@@ -17,6 +17,7 @@ class LLVMActions extends HolyJavaBaseListener {
     private static final int BUFFER_SIZE = 128;
     private final Map<String, Value> variables = new HashMap<>();
     private final Stack<Value> stack = new Stack<>();
+    private final Stack<Array> arrayStack = new Stack<>();
 
     @Override
     public void exitProgramme(HolyJavaParser.ProgrammeContext context) {
@@ -29,12 +30,43 @@ class LLVMActions extends HolyJavaBaseListener {
     }
 
     @Override
+    public void exitAssignarray(HolyJavaParser.AssignarrayContext context) {
+        final var ID = context.ID().getText();
+        final var array = variables.get(ID);
+
+        if (array == null) {
+            error(context.getStart().getLine(), "unknown array " + ID);
+        }
+
+        final var value = stack.pop();
+        final var index = stack.pop();
+
+        if (index.type != PrimitiveType.INT && index.type != PrimitiveType.LONG) {
+            error(context.getStart().getLine(), "array index must be int or long");
+        }
+
+        if (index.type == PrimitiveType.INT) {
+            LLVMGenerator.sext_i32(index.name);
+        }
+
+        if (value.type != array.type) {
+            error(context.getStart().getLine(), "array type mismatch");
+        }
+
+        LLVMGenerator.assign_array_item(array.name, array.length, index.name, value.name, value.type.llvmType());
+    }
+
+    @Override
     public void exitAssign(HolyJavaParser.AssignContext context) {
         final var ID = context.ID().getText();
         final var variable = stack.pop();
 
         if (!variables.containsKey(ID)) {
             variables.put(ID, variable);
+
+            if (variable instanceof Array) {
+                return;
+            }
 
             if (variable.type == PrimitiveType.INT) {
                 LLVMGenerator.declare_i32(ID);
@@ -59,6 +91,10 @@ class LLVMActions extends HolyJavaBaseListener {
             if (variable.type == PrimitiveType.BOOLEAN) {
                 LLVMGenerator.declare_bool(ID);
             }
+        }
+
+        if (variable instanceof Array) {
+            return;
         }
 
         if (variable.type == PrimitiveType.INT) {
@@ -234,6 +270,31 @@ class LLVMActions extends HolyJavaBaseListener {
     }
 
     @Override
+    public void enterArray(HolyJavaParser.ArrayContext context) {
+        final var id = "arr" + (LLVMGenerator.arr - 1);
+        final var array = new Array(id, PrimitiveType.UNKNOWN, 0);
+        arrayStack.push(array);
+        LLVMGenerator.arr++;
+    }
+
+    @Override
+    public void exitArray(HolyJavaParser.ArrayContext context) {
+        final var array = arrayStack.pop();
+        LLVMGenerator.declare_array(array.name, array.length, array.type.llvmType());
+
+        for (var index = 0; index < array.length; index++) {
+            final var value = array.values.get(index);
+            LLVMGenerator.assign_array_item(array.name, array.length, String.valueOf(index), value.name, value.type.llvmType());
+        }
+
+        if (context.getParent() instanceof HolyJavaParser.ArrayitemContext) {
+            return;
+        }
+
+        stack.push(array);
+    }
+
+    @Override
     public void exitAnd(HolyJavaParser.AndContext context) {
         final var value1 = stack.pop();
         final var value2 = stack.pop();
@@ -374,6 +435,45 @@ class LLVMActions extends HolyJavaBaseListener {
         }
 
         stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.DOUBLE));
+    }
+
+    @Override
+    public void exitArrayitem(HolyJavaParser.ArrayitemContext context) {
+        final var value = stack.pop();
+        final var array = arrayStack.peek();
+        array.values.add(value);
+        array.length++;
+
+        if (array.type == PrimitiveType.UNKNOWN) {
+            array.type = value.type;
+            return;
+        }
+
+        if (array.type != value.type) {
+            error(context.getStart().getLine(), "array type mismatch");
+        }
+    }
+
+    @Override
+    public void exitArrayvalue(HolyJavaParser.ArrayvalueContext context) {
+        final var array = variables.get(context.ID().getText());
+
+        if (array == null) {
+            error(context.getStart().getLine(), "unknown array " + context.ID().getText());
+        }
+
+        final var index = stack.pop();
+
+        if (index.type != PrimitiveType.INT && index.type != PrimitiveType.LONG) {
+            error(context.getStart().getLine(), "array index must be int or long");
+        }
+
+        if (index.type == PrimitiveType.INT) {
+            LLVMGenerator.sext_i32(index.name);
+        }
+
+        LLVMGenerator.load_array_value(array.name, array.length, index.name, array.type.llvmType());
+        stack.push(new Value("%" + (LLVMGenerator.register - 1), array.type));
     }
 
     @Override

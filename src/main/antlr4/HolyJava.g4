@@ -7,9 +7,10 @@ package pl.edu.pw.ee;
 programme: ( statement? SEMICOLON )*
 ;
 
-statement:    ID '=' expr0		#assign
-            | PRINT ID   		#print
-            | READ ID		    #read
+statement:    ID '[' expr0 ']' '=' expr0	#assignarray
+            | ID '=' expr0		            #assign
+            | PRINT ID   		            #print
+            | READ ID		                #read
 ;
 
 expr0:    expr1			        #single0
@@ -34,22 +35,27 @@ expr4:    expr5			        #single4
         | expr4 DIVIDE expr5	#div
         ;
 
-expr5:    value             #val
-        | NEG expr5		    #neg
-        | TOFLOAT expr2     #tofloat
-        | TOINT expr2		#toint
-        | TOLONG expr2		#tolong
-        | TODOUBLE expr2	#todouble
-        | '(' expr0 ')'		#par
+expr5:    value                     #val
+        | '[' item (',' item)* ']'  #array
+        | NEG expr5		            #neg
+        | TOFLOAT expr2             #tofloat
+        | TOINT expr2		        #toint
+        | TOLONG expr2		        #tolong
+        | TODOUBLE expr2	        #todouble
+        | '(' expr0 ')'		        #par
         ;
 
-value:    ID            #id
-        | FLOAT			#float
-        | INT			#int
-        | LONG			#long
-        | DOUBLE		#double
-        | STRING        #string
-        | BOOL          #bool
+item: expr0 #arrayitem
+    ;
+
+value:    ID '[' expr0 ']'  #arrayvalue
+        | ID                #id
+        | FLOAT			    #float
+        | INT			    #int
+        | LONG			    #long
+        | DOUBLE		    #double
+        | STRING            #string
+        | BOOL              #bool
         ;
 
 READ: 'read'
