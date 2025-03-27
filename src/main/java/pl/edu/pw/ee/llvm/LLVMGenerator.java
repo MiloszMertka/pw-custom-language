@@ -6,6 +6,7 @@ class LLVMGenerator {
     private static final StringBuilder MAIN_TEXT = new StringBuilder();
     static int register = 1;
     static int str = 1;
+    static int arr = 1;
 
     static void printf_i32(String id) {
         load_i32(id);
@@ -75,6 +76,44 @@ class LLVMGenerator {
         MAIN_TEXT.append("%")
                 .append(id)
                 .append(" = alloca i8*\n");
+    }
+
+    static void declare_array(String id, int size, String type) {
+        MAIN_TEXT.append("%")
+                .append(id)
+                .append(" = alloca [")
+                .append(size)
+                .append(" x ")
+                .append(type)
+                .append("]\n");
+    }
+
+    static void assign_array_item(String id, int length, String index, String value, String type) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = getelementptr inbounds [")
+                .append(length)
+                .append(" x ")
+                .append(type)
+                .append("], [")
+                .append(length)
+                .append(" x ")
+                .append(type)
+                .append("]* %")
+                .append(id)
+                .append(", i64 0, i64 ")
+                .append(index)
+                .append("\n");
+        MAIN_TEXT.append("store ")
+                .append(type)
+                .append(" ")
+                .append(value)
+                .append(", ")
+                .append(type)
+                .append("* %")
+                .append(register)
+                .append("\n");
+        register++;
     }
 
     static void assign_i32(String id, String value) {
@@ -167,6 +206,35 @@ class LLVMGenerator {
                 .append(register)
                 .append(" = load i8*, i8** %")
                 .append(id)
+                .append("\n");
+        register++;
+    }
+
+    static void load_array_value(String id, int length, String index, String type) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = getelementptr inbounds [")
+                .append(length)
+                .append(" x ")
+                .append(type)
+                .append("], [")
+                .append(length)
+                .append(" x ")
+                .append(type)
+                .append("]* %")
+                .append(id)
+                .append(", i64 0, i64 ")
+                .append(index)
+                .append("\n");
+        register++;
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = load ")
+                .append(type)
+                .append(", ")
+                .append(type)
+                .append("* %")
+                .append(register - 1)
                 .append("\n");
         register++;
     }
