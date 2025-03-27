@@ -242,7 +242,7 @@ class LLVMActions extends HolyJavaBaseListener {
             error(context.getStart().getLine(), "AND type mismatch");
         }
 
-        LLVMGenerator.and_bool(value1.name, value2.name);
+        LLVMGenerator.and_bool_sc(value1.name, value2.name);
         stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
     }
 
@@ -255,7 +255,7 @@ class LLVMActions extends HolyJavaBaseListener {
             error(context.getStart().getLine(), "OR type mismatch");
         }
 
-        LLVMGenerator.or_bool(value1.name, value2.name);
+        LLVMGenerator.or_bool_sc(value1.name, value2.name);
         stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
     }
 

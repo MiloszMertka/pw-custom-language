@@ -233,6 +233,99 @@ class LLVMGenerator {
         register++;
     }
 
+    static void and_bool_sc(String val1, String val2) {
+        String labelTrue = "and_true_" + register;
+        String labelNotTrue = "and_not_true_" + register;
+        String labelEnd = "and_end_" + register;
+        String result = "%" + register;
+        String trueVal = "%true_" + register;
+        String falseVal = "%false_" + register;
+        register++;
+
+        // Jeśli val1 jest fałszywe, skaczemy od razu do końca
+        MAIN_TEXT.append("br i1 ")
+                .append(val1)
+                .append(", label %")
+                .append(labelTrue)
+                .append(", label %")
+                .append(labelNotTrue)
+                .append("\n");
+
+        // Blok jeśli val1 == true sprawdzamy val2
+        MAIN_TEXT.append(labelTrue)
+                .append(":\n");
+        MAIN_TEXT.append(trueVal)
+                .append(" = and i1 ")
+                .append(val1)
+                .append(", ")
+                .append(val2)
+                .append("\n");
+        MAIN_TEXT.append("br label %")
+                .append(labelEnd)
+                .append("\n");
+
+        // jesli nie to zwracamy zero
+        MAIN_TEXT.append(labelNotTrue)
+                 .append(":\n");
+        MAIN_TEXT.append(falseVal)
+                 .append(" = and i1 0, 0\n");
+        MAIN_TEXT.append("br label %")
+                 .append(labelEnd)
+                 .append("\n");
+
+        MAIN_TEXT.append(labelEnd)
+                .append(":\n")
+                .append(result)
+                .append(" = phi i1 [ ").append(trueVal).append(", %").append(labelTrue)
+                .append(" ], [ ").append(falseVal).append(", %").append(labelNotTrue).append(" ]\n");
+    }
+
+    static void or_bool_sc(String val1, String val2) {
+        String labelTrue = "and_true_" + register;
+        String labelNotTrue = "and_not_true_" + register;
+        String labelEnd = "and_end_" + register;
+        String result = "%" + register;
+        String trueVal = "%true_" + register;
+        String falseVal = "%false_" + register;
+        register++;
+
+        // Jeśli val1 jest prawdziwe, skaczemy od labelTrue
+        MAIN_TEXT.append("br i1 ")
+                .append(val1)
+                .append(", label %")
+                .append(labelTrue)
+                .append(", label %")
+                .append(labelNotTrue)
+                .append("\n");
+
+        // Blok jeśli val1 == true zwracamy od razu prawda
+        MAIN_TEXT.append(labelTrue)
+                .append(":\n");
+        MAIN_TEXT.append(trueVal)
+                .append(" = or i1 1, 1")
+                .append("\n")
+                .append("br label %")
+                .append(labelEnd)
+                .append("\n");
+
+        // Blok jesli val1 != true obliczamy or
+        MAIN_TEXT.append(labelNotTrue)
+                .append(":\n");
+        MAIN_TEXT.append(falseVal)
+                .append(" = or i1 ").append(val1).append(", ").append(val2)
+                .append("\n")
+                .append("br label %")
+                .append(labelEnd)
+                .append("\n");
+
+        // Blok końcowy
+        MAIN_TEXT.append(labelEnd)
+                .append(":\n")
+                .append(result)
+                .append(" = phi i1 [ ").append(trueVal).append(", %").append(labelTrue)
+                .append(" ], [ ").append(falseVal).append(", %").append(labelNotTrue).append(" ]\n");
+    }
+
     static void or_bool(String val1, String val2) {
         MAIN_TEXT.append("%")
                 .append(register)
