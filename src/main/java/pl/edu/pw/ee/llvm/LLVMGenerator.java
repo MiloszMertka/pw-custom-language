@@ -222,6 +222,48 @@ class LLVMGenerator {
         register++;
     }
 
+    static void and_bool(String val1, String val2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = and i1 ")
+                .append(val1)
+                .append(", ")
+                .append(val2)
+                .append("\n");
+        register++;
+    }
+
+    static void or_bool(String val1, String val2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = or i1 ")
+                .append(val1)
+                .append(", ")
+                .append(val2)
+                .append("\n");
+        register++;
+    }
+
+    static void xor_bool(String val1, String val2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = xor i1 ")
+                .append(val1)
+                .append(", ")
+                .append(val2)
+                .append("\n");
+        register++;
+    }
+
+    static void negation(String val) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = xor i1 ")
+                .append(val)
+                .append(", 1\n");  // NOT = XOR z 1
+        register++;
+    }
+
     static void add_i32(String val1, String val2) {
         MAIN_TEXT.append("%")
                 .append(register)

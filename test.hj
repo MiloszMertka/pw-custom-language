@@ -1,2 +1,4 @@
-x = true;
-print x;
+x = !false;
+y = true;
+z = x ^ y;
+print z;

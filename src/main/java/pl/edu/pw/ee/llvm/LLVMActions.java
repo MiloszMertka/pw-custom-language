@@ -234,6 +234,57 @@ class LLVMActions extends HolyJavaBaseListener {
     }
 
     @Override
+    public void exitAnd(HolyJavaParser.AndContext context) {
+        final var value1 = stack.pop();
+        final var value2 = stack.pop();
+
+        if (value1.type != PrimitiveType.BOOLEAN || value2.type != PrimitiveType.BOOLEAN) {
+            error(context.getStart().getLine(), "AND type mismatch");
+        }
+
+        LLVMGenerator.and_bool(value1.name, value2.name);
+        stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
+    }
+
+    @Override
+    public void exitOr(HolyJavaParser.OrContext context) {
+        final var value1 = stack.pop();
+        final var value2 = stack.pop();
+
+        if (value1.type != PrimitiveType.BOOLEAN || value2.type != PrimitiveType.BOOLEAN) {
+            error(context.getStart().getLine(), "OR type mismatch");
+        }
+
+        LLVMGenerator.or_bool(value1.name, value2.name);
+        stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
+    }
+
+    @Override
+    public void exitXor(HolyJavaParser.XorContext context) {
+        final var value1 = stack.pop();
+        final var value2 = stack.pop();
+
+        if (value1.type != PrimitiveType.BOOLEAN || value2.type != PrimitiveType.BOOLEAN) {
+            error(context.getStart().getLine(), "XOR type mismatch");
+        }
+
+        LLVMGenerator.xor_bool(value1.name, value2.name);
+        stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
+    }
+
+    @Override
+    public void exitNeg(HolyJavaParser.NegContext context) {
+        final var value1 = stack.pop();
+
+        if (value1.type != PrimitiveType.BOOLEAN) {
+            error(context.getStart().getLine(), "NEG type mismatch");
+        }
+
+        LLVMGenerator.negation(value1.name);
+        stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
+    }
+
+    @Override
     public void exitTofloat(HolyJavaParser.TofloatContext context) {
         final var value = stack.pop();
 

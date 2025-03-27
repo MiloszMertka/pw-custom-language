@@ -13,16 +13,29 @@ statement:    ID '=' expr0		#assign
 ;
 
 expr0:    expr1			        #single0
-        | expr1 ADD expr1	    #add
-        | expr1 SUBSTRACT expr1	#sub
+        | expr0 OR expr1	    #or
         ;
 
 expr1:    expr2			        #single1
-        | expr2 MULT expr2	    #mult
-        | expr2 DIVIDE expr2	#div
+        | expr1 XOR expr2	    #xor
         ;
 
-expr2:    value             #val
+expr2:    expr3			        #single2
+        | expr2 AND expr3	    #and
+        ;
+
+expr3:    expr4			        #single3
+        | expr3 ADD expr4	    #add
+        | expr3 SUBSTRACT expr4	#sub
+        ;
+
+expr4:    expr5			        #single4
+        | expr4 MULT expr5	    #mult
+        | expr4 DIVIDE expr5	#div
+        ;
+
+expr5:    value             #val
+        | NEG expr5		    #neg
         | TOFLOAT expr2     #tofloat
         | TOINT expr2		#toint
         | TOLONG expr2		#tolong
@@ -88,6 +101,18 @@ DIVIDE: '/'
     ;
 
 MULT: '*'
+    ;
+
+AND: '&'
+    ;
+
+OR: '|'
+    ;
+
+XOR: '^'
+    ;
+
+NEG: '!'
     ;
 
 SEMICOLON: ';'
