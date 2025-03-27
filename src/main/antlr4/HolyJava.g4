@@ -34,12 +34,13 @@ expr2:    value                         #val
 item: expr0 #arrayitem
     ;
 
-value:    ID            #id
-        | FLOAT			#float
-        | INT			#int
-        | LONG			#long
-        | DOUBLE		#double
-        | STRING        #string
+value:    ID '[' expr0 ']'	#arrayvalue
+        | ID                #id
+        | FLOAT			    #float
+        | INT			    #int
+        | LONG			    #long
+        | DOUBLE		    #double
+        | STRING            #string
         ;
 
 READ: 'read'

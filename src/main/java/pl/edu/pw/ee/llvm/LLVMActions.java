@@ -36,6 +36,10 @@ class LLVMActions extends HolyJavaBaseListener {
         if (!variables.containsKey(ID)) {
             variables.put(ID, variable);
 
+            if (variable instanceof Array) {
+                return;
+            }
+
             if (variable.type == PrimitiveType.INT) {
                 LLVMGenerator.declare_i32(ID);
             }
@@ -55,6 +59,10 @@ class LLVMActions extends HolyJavaBaseListener {
             if (variable.type == PrimitiveType.STRING) {
                 LLVMGenerator.declare_string(ID);
             }
+        }
+
+        if (variable instanceof Array) {
+            return;
         }
 
         if (variable.type == PrimitiveType.INT) {
@@ -356,6 +364,28 @@ class LLVMActions extends HolyJavaBaseListener {
         if (array.type != value.type) {
             error(context.getStart().getLine(), "array type mismatch");
         }
+    }
+
+    @Override
+    public void exitArrayvalue(HolyJavaParser.ArrayvalueContext context) {
+        final var array = variables.get(context.ID().getText());
+
+        if (array == null) {
+            error(context.getStart().getLine(), "unknown array " + context.ID().getText());
+        }
+
+        final var index = stack.pop();
+
+        if (index.type != PrimitiveType.INT && index.type != PrimitiveType.LONG) {
+            error(context.getStart().getLine(), "array index must be int or long");
+        }
+
+        if (index.type == PrimitiveType.INT) {
+            LLVMGenerator.sext_i32(index.name);
+        }
+
+        LLVMGenerator.load_array_value(array.name, array.length, index.name, array.type.llvmType());
+        stack.push(new Value("%" + (LLVMGenerator.register - 1), array.type));
     }
 
     @Override

@@ -210,6 +210,35 @@ class LLVMGenerator {
         register++;
     }
 
+    static void load_array_value(String id, int length, String index, String type) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = getelementptr inbounds [")
+                .append(length)
+                .append(" x ")
+                .append(type)
+                .append("], [")
+                .append(length)
+                .append(" x ")
+                .append(type)
+                .append("]* %")
+                .append(id)
+                .append(", i64 0, i64 ")
+                .append(index)
+                .append("\n");
+        register++;
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = load ")
+                .append(type)
+                .append(", ")
+                .append(type)
+                .append("* %")
+                .append(register - 1)
+                .append("\n");
+        register++;
+    }
+
     static void add_i32(String val1, String val2) {
         MAIN_TEXT.append("%")
                 .append(register)
