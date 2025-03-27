@@ -16,6 +16,7 @@ class LLVMActions extends HolyJavaBaseListener {
     private static final int BUFFER_SIZE = 128;
     private final Map<String, Value> variables = new HashMap<>();
     private final Stack<Value> stack = new Stack<>();
+    private final Stack<Array> arrayStack = new Stack<>();
 
     @Override
     public void exitProgramme(HolyJavaParser.ProgrammeContext context) {
@@ -224,6 +225,31 @@ class LLVMActions extends HolyJavaBaseListener {
     }
 
     @Override
+    public void enterArray(HolyJavaParser.ArrayContext context) {
+        final var id = "arr" + (LLVMGenerator.arr - 1);
+        final var array = new Array(id, PrimitiveType.UNKNOWN, 0);
+        arrayStack.push(array);
+        LLVMGenerator.arr++;
+    }
+
+    @Override
+    public void exitArray(HolyJavaParser.ArrayContext context) {
+        final var array = arrayStack.pop();
+        LLVMGenerator.declare_array(array.name, array.length, array.type.llvmType());
+
+        for (var index = 0; index < array.length; index++) {
+            final var value = array.values.get(index);
+            LLVMGenerator.assign_array_item(array.name, array.length, index, value.name, value.type.llvmType());
+        }
+
+        if (context.getParent() instanceof HolyJavaParser.ArrayitemContext) {
+            return;
+        }
+
+        stack.push(array);
+    }
+
+    @Override
     public void exitTofloat(HolyJavaParser.TofloatContext context) {
         final var value = stack.pop();
 
@@ -313,6 +339,23 @@ class LLVMActions extends HolyJavaBaseListener {
         }
 
         stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.DOUBLE));
+    }
+
+    @Override
+    public void exitArrayitem(HolyJavaParser.ArrayitemContext context) {
+        final var value = stack.pop();
+        final var array = arrayStack.peek();
+        array.values.add(value);
+        array.length++;
+
+        if (array.type == PrimitiveType.UNKNOWN) {
+            array.type = value.type;
+            return;
+        }
+
+        if (array.type != value.type) {
+            error(context.getStart().getLine(), "array type mismatch");
+        }
     }
 
     @Override

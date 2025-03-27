@@ -22,13 +22,17 @@ expr1:    expr2			        #single1
         | expr2 DIVIDE expr2	#div
         ;
 
-expr2:    value             #val
-        | TOFLOAT expr2     #tofloat
-        | TOINT expr2		#toint
-        | TOLONG expr2		#tolong
-        | TODOUBLE expr2	#todouble
-        | '(' expr0 ')'		#par
+expr2:    value                         #val
+        | '[' item (',' item)* ']'      #array
+        | TOFLOAT expr2                 #tofloat
+        | TOINT expr2		            #toint
+        | TOLONG expr2		            #tolong
+        | TODOUBLE expr2	            #todouble
+        | '(' expr0 ')'		            #par
         ;
+
+item: expr0 #arrayitem
+    ;
 
 value:    ID            #id
         | FLOAT			#float
