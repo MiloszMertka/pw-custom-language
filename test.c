@@ -1,7 +1,17 @@
 #include<stdio.h>
 
+int a = 10;
+
 int main() {
-    int a[3] = {1, 2, 3};
-    printf("%d\n", a[1]);
+    a = 20;
+
+    {
+        a = 30;
+        {
+            a = 40;
+            printf("%d\n", a); // 40
+        }
+    }
+
     return 0;
 }

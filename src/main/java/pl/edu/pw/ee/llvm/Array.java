@@ -7,8 +7,8 @@ public class Array extends Value {
 
     public List<Value> values = new LinkedList<>();
 
-    public Array(String name, PrimitiveType type, int length) {
-        super(name, type, length);
+    public Array(String name, PrimitiveType type, int length, boolean isGlobal) {
+        super(name, type, length, isGlobal);
     }
 
 }

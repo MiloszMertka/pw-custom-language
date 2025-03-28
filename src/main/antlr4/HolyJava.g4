@@ -4,17 +4,31 @@ grammar HolyJava;
 package pl.edu.pw.ee;
 }
 
-programme: ( statement? SEMICOLON )*
-;
+programme:    (function|(statement? SEMICOLON))*
+            ;
 
-statement:    ID '[' expr0 ']' '[' expr0 ']' '=' expr0	#assignmatrix
-            | ID '[' expr0 ']' '=' expr0	            #assignarray
-            | ID '=' expr0		                        #assign
-            | ID '=' '[' matitem+ ']'                   #matrix
-            | ID '=' arr                                #array
-            | PRINT ID   		                        #print
-            | READ ID		                            #read
-;
+statement:    ID '[' expr0 ']' '[' expr0 ']' '=' expr0	    #assignmatrix
+            | ID '[' expr0 ']' '=' expr0	                #assignarray
+            | ID '=' expr0		                            #assign
+            | ID '=' '[' matitem+ ']'                       #matrix
+            | ID '=' arr                                    #array
+            | PRINT ID   		                            #print
+            | READ ID		                                #read
+            | RETURN expr0                                  #return
+            | (ID '=')? ID '(' (expr0 (',' expr0)*)? ')'    #funcall
+            ;
+
+function: FUN (VOID|type) ID params block #fundef
+    ;
+
+params: '(' (param (',' param)*)? ')' #funparams
+    ;
+
+param: type ID #paramdef
+    ;
+
+block: '{' (statement? SEMICOLON)* '}' #statementblock
+    ;
 
 matitem: arr #matrixitem
     ;
@@ -67,6 +81,19 @@ value:    ID '[' expr0 ']' '[' expr0 ']' #matrixvalue
         | BOOL                           #bool
         ;
 
+type:     INTTYPE
+        | LONGTYPE
+        | FLOATTYPE
+        | DOUBLETYPE
+        | BOOLTYPE
+        ;
+
+FUN: 'fun'
+    ;
+
+RETURN: 'return'
+    ;
+
 READ: 'read'
     ;
 
@@ -86,6 +113,24 @@ TODOUBLE: '(double)'
     ;
 
 BOOL: 'true' | 'false'
+    ;
+
+INTTYPE: 'int'
+    ;
+
+LONGTYPE: 'long'
+    ;
+
+FLOATTYPE: 'float'
+    ;
+
+DOUBLETYPE: 'double'
+    ;
+
+BOOLTYPE: 'bool'
+    ;
+
+VOID: 'void'
     ;
 
 ID: ('a'..'z'|'A'..'Z')+

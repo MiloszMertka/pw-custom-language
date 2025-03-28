@@ -1,5 +1,6 @@
 package pl.edu.pw.ee.llvm;
 
+import org.antlr.v4.runtime.ParserRuleContext;
 import pl.edu.pw.ee.HolyJavaBaseListener;
 import pl.edu.pw.ee.HolyJavaParser;
 
@@ -15,10 +16,13 @@ class LLVMActions extends HolyJavaBaseListener {
 
     private static final Path OUTPUT_FILE_PATH = Path.of("output.ll");
     private static final int BUFFER_SIZE = 128;
-    private final Map<String, Value> variables = new HashMap<>();
+    private final Map<String, Value> globalVariables = new HashMap<>();
+    private final Map<String, Value> localVariables = new HashMap<>();
+    private final Map<String, Function> functions = new HashMap<>();
     private final Stack<Value> stack = new Stack<>();
     private final Stack<Array> arrayStack = new Stack<>();
     private final Stack<Matrix> matrixStack = new Stack<>();
+    private boolean isGlobalContext = true;
 
     @Override
     public void exitProgramme(HolyJavaParser.ProgrammeContext context) {
@@ -33,7 +37,7 @@ class LLVMActions extends HolyJavaBaseListener {
     @Override
     public void exitAssignmatrix(HolyJavaParser.AssignmatrixContext context) {
         final var ID = context.ID().getText();
-        final var matrix = (Matrix) variables.get(ID);
+        final var matrix = (Matrix) getVariable(ID, context);
 
         if (matrix == null) {
             error(context.getStart().getLine(), "unknown matrix " + ID);
@@ -52,24 +56,24 @@ class LLVMActions extends HolyJavaBaseListener {
         }
 
         if (rowIndex.type == PrimitiveType.INT) {
-            LLVMGenerator.sext_i32(rowIndex.name);
+            LLVMGenerator.ext(rowIndex);
         }
 
         if (columnIndex.type == PrimitiveType.INT) {
-            LLVMGenerator.sext_i32(columnIndex.name);
+            LLVMGenerator.ext(columnIndex);
         }
 
         if (value.type != matrix.type) {
             error(context.getStart().getLine(), "matrix type mismatch");
         }
 
-        LLVMGenerator.assign_matrix_item(matrix.name, matrix.length, matrix.rowLength, rowIndex.name, columnIndex.name, value.name, value.type.llvmType());
+        LLVMGenerator.assign_matrix_item(matrix, rowIndex.name(), columnIndex.name(), value);
     }
 
     @Override
     public void exitAssignarray(HolyJavaParser.AssignarrayContext context) {
         final var ID = context.ID().getText();
-        final var array = variables.get(ID);
+        final var array = (Array) getVariable(ID, context);
 
         if (array == null) {
             error(context.getStart().getLine(), "unknown array " + ID);
@@ -83,16 +87,19 @@ class LLVMActions extends HolyJavaBaseListener {
         }
 
         if (index.type == PrimitiveType.INT) {
-            var subindex = index.name.substring(0, index.name.length() - 1);
-            var subIndexValue = Integer.parseInt(subindex);
-            if (subIndexValue > (array.length -1) || subIndexValue < 0) {
+            final var subIndex = index.name().substring(0, index.name().length() - 1);
+            final var subIndexValue = Integer.parseInt(subIndex);
+
+            if (subIndexValue > (array.length - 1) || subIndexValue < 0) {
                 error(context.getStart().getLine(), "array index out of range");
             }
-            LLVMGenerator.sext_i32(index.name);
+
+            LLVMGenerator.ext(index);
         }
 
-        var indexValue = Integer.parseInt(index.name);
-        if (indexValue > (array.length -1) || indexValue < 0) {
+        final var indexValue = Integer.parseInt(index.name());
+
+        if (indexValue > (array.length - 1) || indexValue < 0) {
             error(context.getStart().getLine(), "array index out of range");
         }
 
@@ -100,7 +107,7 @@ class LLVMActions extends HolyJavaBaseListener {
             error(context.getStart().getLine(), "array type mismatch");
         }
 
-        LLVMGenerator.assign_array_item(array.name, array.length, index.name, value.name, value.type.llvmType());
+        LLVMGenerator.assign_array_item(array, index.name(), value);
     }
 
     @Override
@@ -108,63 +115,18 @@ class LLVMActions extends HolyJavaBaseListener {
         final var ID = context.ID().getText();
         final var variable = stack.pop();
 
-        if (!variables.containsKey(ID)) {
-            variables.put(ID, variable);
-
-            if (variable.type == PrimitiveType.INT) {
-                LLVMGenerator.declare_i32(ID);
-            }
-
-            if (variable.type == PrimitiveType.LONG) {
-                LLVMGenerator.declare_i64(ID);
-            }
-
-            if (variable.type == PrimitiveType.FLOAT) {
-                LLVMGenerator.declare_float(ID);
-            }
-
-            if (variable.type == PrimitiveType.DOUBLE) {
-                LLVMGenerator.declare_double(ID);
-            }
-
-            if (variable.type == PrimitiveType.STRING) {
-                LLVMGenerator.declare_string(ID);
-            }
-
-            if (variable.type == PrimitiveType.BOOLEAN) {
-                LLVMGenerator.declare_bool(ID);
-            }
+        if (isVariableUndefined(ID)) {
+            setVariable(ID, variable);
+            LLVMGenerator.declare(ID, variable.type, isGlobalContext);
         }
 
-        if (variable.type == PrimitiveType.INT) {
-            LLVMGenerator.assign_i32(ID, variable.name);
-        }
-
-        if (variable.type == PrimitiveType.LONG) {
-            LLVMGenerator.assign_i64(ID, variable.name);
-        }
-
-        if (variable.type == PrimitiveType.FLOAT) {
-            LLVMGenerator.assign_float(ID, variable.name);
-        }
-
-        if (variable.type == PrimitiveType.DOUBLE) {
-            LLVMGenerator.assign_double(ID, variable.name);
-        }
-
-        if (variable.type == PrimitiveType.STRING) {
-            LLVMGenerator.assign_string(ID, variable.name);
-        }
-
-        if (variable.type == PrimitiveType.BOOLEAN) {
-            LLVMGenerator.assign_bool(ID, variable.name);
-        }
+        LLVMGenerator.assign(ID, isGlobalContext, variable);
     }
 
     @Override
     public void enterMatrix(HolyJavaParser.MatrixContext context) {
         final var id = "mat" + (LLVMGenerator.mat - 1);
-        final var matrix = new Matrix(id, PrimitiveType.UNKNOWN, 0);
+        final var matrix = new Matrix(id, PrimitiveType.UNKNOWN, 0, isGlobalContext);
         matrixStack.push(matrix);
         LLVMGenerator.mat++;
     }
@@ -172,49 +134,53 @@ class LLVMActions extends HolyJavaBaseListener {
     @Override
     public void exitMatrix(HolyJavaParser.MatrixContext context) {
         final var matrix = matrixStack.pop();
-        LLVMGenerator.declare_matrix(matrix.name, matrix.length, matrix.rowLength, matrix.type.llvmType());
+        LLVMGenerator.declare(matrix);
 
         for (var index = 0; index < matrix.length; index++) {
             final var row = matrix.rows.get(index);
-            LLVMGenerator.assign_matrix_row(matrix.name, matrix.length, matrix.rowLength, String.valueOf(index), row.name, matrix.type.llvmType());
+            LLVMGenerator.assign_matrix_row(matrix, String.valueOf(index), row);
         }
 
         final var id = context.ID().getText();
-        variables.put(id, matrix);
+        setVariable(id, matrix);
     }
 
     @Override
     public void exitArray(HolyJavaParser.ArrayContext context) {
         final var id = context.ID().getText();
         final var array = stack.pop();
-        variables.put(id, array);
+        setVariable(id, array);
     }
 
     @Override
     public void exitPrint(HolyJavaParser.PrintContext context) {
         final var ID = context.ID().getText();
-        if (variables.containsKey(ID)) {
-            final var value = variables.get(ID);
-            switch (value.type) {
-                case INT -> LLVMGenerator.printf_i32(ID);
-                case LONG -> LLVMGenerator.printf_i64(ID);
-                case FLOAT -> LLVMGenerator.printf_float(ID);
-                case DOUBLE -> LLVMGenerator.printf_double(ID);
-                case STRING -> LLVMGenerator.printf_string(ID);
-                case BOOLEAN -> LLVMGenerator.printf_bool(ID);
-                case UNKNOWN -> error(context.getStart().getLine(), "unknown variable " + ID);
-            }
-        } else {
+
+        if (isVariableUndefined(ID)) {
             error(context.getStart().getLine(), "unknown variable");
         }
+
+        final var value = getVariable(ID, context);
+        LLVMGenerator.printf(value);
     }
 
     @Override
     public void exitRead(HolyJavaParser.ReadContext context) {
         final var ID = context.ID().getText();
-        final var value = new Value(ID, PrimitiveType.STRING, BUFFER_SIZE - 1);
-        variables.put(ID, value);
+        final var value = new Value(ID, PrimitiveType.STRING, BUFFER_SIZE - 1, isGlobalContext);
+        setVariable(ID, value);
         LLVMGenerator.scanf(ID, BUFFER_SIZE);
+    }
+
+    @Override
+    public void enterFundef(HolyJavaParser.FundefContext context) {
+        isGlobalContext = false;
+    }
+
+    @Override
+    public void exitFundef(HolyJavaParser.FundefContext context) {
+        isGlobalContext = true;
+        localVariables.clear();
     }
 
     @Override
@@ -242,7 +208,7 @@ class LLVMActions extends HolyJavaBaseListener {
     @Override
     public void enterArraydef(HolyJavaParser.ArraydefContext context) {
         final var id = "arr" + (LLVMGenerator.arr - 1);
-        final var array = new Array(id, PrimitiveType.UNKNOWN, 0);
+        final var array = new Array(id, PrimitiveType.UNKNOWN, 0, isGlobalContext);
         arrayStack.push(array);
         LLVMGenerator.arr++;
     }
@@ -250,11 +216,11 @@ class LLVMActions extends HolyJavaBaseListener {
     @Override
     public void exitArraydef(HolyJavaParser.ArraydefContext context) {
         final var array = arrayStack.pop();
-        LLVMGenerator.declare_array(array.name, array.length, array.type.llvmType());
+        LLVMGenerator.declare(array);
 
         for (var index = 0; index < array.length; index++) {
             final var value = array.values.get(index);
-            LLVMGenerator.assign_array_item(array.name, array.length, String.valueOf(index), value.name, value.type.llvmType());
+            LLVMGenerator.assign_array_item(array, String.valueOf(index), value);
         }
 
         stack.push(array);
@@ -278,139 +244,6 @@ class LLVMActions extends HolyJavaBaseListener {
     }
 
     @Override
-    public void exitAdd(HolyJavaParser.AddContext context) {
-        final var value1 = stack.pop();
-        final var value2 = stack.pop();
-
-        if (!value1.type.equals(value2.type)) {
-            error(context.getStart().getLine(), "add type mismatch");
-        }
-
-        if (value1.type == PrimitiveType.INT) {
-            LLVMGenerator.add_i32(value1.name, value2.name);
-            stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.INT));
-        }
-
-        if (value1.type == PrimitiveType.LONG) {
-            LLVMGenerator.add_i64(value1.name, value2.name);
-            stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.LONG));
-        }
-
-        if (value1.type == PrimitiveType.FLOAT) {
-            LLVMGenerator.add_float(value1.name, value2.name);
-            stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.FLOAT));
-        }
-
-        if (value1.type == PrimitiveType.DOUBLE) {
-            LLVMGenerator.add_double(value1.name, value2.name);
-            stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.DOUBLE));
-        }
-    }
-
-    @Override
-    public void exitSub(HolyJavaParser.SubContext context) {
-        final var value1 = stack.pop();
-        final var value2 = stack.pop();
-
-        if (!value1.type.equals(value2.type)) {
-            error(context.getStart().getLine(), "sub type mismatch");
-        }
-
-        if (value1.type == PrimitiveType.INT) {
-            LLVMGenerator.sub_i32(value1.name, value2.name);
-            stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.INT));
-        }
-
-        if (value1.type == PrimitiveType.LONG) {
-            LLVMGenerator.sub_i64(value1.name, value2.name);
-            stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.LONG));
-        }
-
-        if (value1.type == PrimitiveType.FLOAT) {
-            LLVMGenerator.sub_float(value1.name, value2.name);
-            stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.FLOAT));
-        }
-
-        if (value1.type == PrimitiveType.DOUBLE) {
-            LLVMGenerator.sub_double(value1.name, value2.name);
-            stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.DOUBLE));
-        }
-    }
-
-    @Override
-    public void exitMult(HolyJavaParser.MultContext context) {
-        final var value1 = stack.pop();
-        final var value2 = stack.pop();
-
-        if (!value1.type.equals(value2.type)) {
-            error(context.getStart().getLine(), "mult type mismatch");
-        }
-
-        if (value1.type == PrimitiveType.INT) {
-            LLVMGenerator.mult_i32(value1.name, value2.name);
-            stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.INT));
-        }
-
-        if (value1.type == PrimitiveType.LONG) {
-            LLVMGenerator.mult_i64(value1.name, value2.name);
-            stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.LONG));
-        }
-
-        if (value1.type == PrimitiveType.FLOAT) {
-            LLVMGenerator.mult_float(value1.name, value2.name);
-            stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.FLOAT));
-        }
-
-        if (value1.type == PrimitiveType.DOUBLE) {
-            LLVMGenerator.mult_double(value1.name, value2.name);
-            stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.DOUBLE));
-        }
-    }
-
-    @Override
-    public void exitDiv(HolyJavaParser.DivContext context) {
-        final var value1 = stack.pop();
-        final var value2 = stack.pop();
-
-        if (!value1.type.equals(value2.type)) {
-            error(context.getStart().getLine(), "div type mismatch");
-        }
-
-        if (value1.type == PrimitiveType.INT) {
-            LLVMGenerator.div_i32(value1.name, value2.name);
-            stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.INT));
-        }
-
-        if (value1.type == PrimitiveType.LONG) {
-            LLVMGenerator.div_i64(value1.name, value2.name);
-            stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.LONG));
-        }
-
-        if (value1.type == PrimitiveType.FLOAT) {
-            LLVMGenerator.div_float(value1.name, value2.name);
-            stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.FLOAT));
-        }
-
-        if (value1.type == PrimitiveType.DOUBLE) {
-            LLVMGenerator.div_double(value1.name, value2.name);
-            stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.DOUBLE));
-        }
-    }
-
-    @Override
-    public void exitAnd(HolyJavaParser.AndContext context) {
-        final var value1 = stack.pop();
-        final var value2 = stack.pop();
-
-        if (value1.type != PrimitiveType.BOOLEAN || value2.type != PrimitiveType.BOOLEAN) {
-            error(context.getStart().getLine(), "AND type mismatch");
-        }
-
-        LLVMGenerator.and_bool_sc(value1.name, value2.name);
-        stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
-    }
-
-    @Override
     public void exitOr(HolyJavaParser.OrContext context) {
         final var value1 = stack.pop();
         final var value2 = stack.pop();
@@ -419,8 +252,8 @@ class LLVMActions extends HolyJavaBaseListener {
             error(context.getStart().getLine(), "OR type mismatch");
         }
 
-        LLVMGenerator.or_bool_sc(value1.name, value2.name);
-        stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
+        LLVMGenerator.or(value1, value2);
+        stack.push(new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
     }
 
     @Override
@@ -432,20 +265,85 @@ class LLVMActions extends HolyJavaBaseListener {
             error(context.getStart().getLine(), "XOR type mismatch");
         }
 
-        LLVMGenerator.xor_bool(value1.name, value2.name);
-        stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
+        LLVMGenerator.xor(value1, value2);
+        stack.push(new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
+    }
+
+    @Override
+    public void exitAnd(HolyJavaParser.AndContext context) {
+        final var value1 = stack.pop();
+        final var value2 = stack.pop();
+
+        if (value1.type != PrimitiveType.BOOLEAN || value2.type != PrimitiveType.BOOLEAN) {
+            error(context.getStart().getLine(), "AND type mismatch");
+        }
+
+        LLVMGenerator.and(value1, value2);
+        stack.push(new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
+    }
+
+    @Override
+    public void exitAdd(HolyJavaParser.AddContext context) {
+        final var value1 = stack.pop();
+        final var value2 = stack.pop();
+
+        if (!value1.type.equals(value2.type)) {
+            error(context.getStart().getLine(), "add type mismatch");
+        }
+
+        final var result = LLVMGenerator.add(value1, value2);
+        stack.push(result);
+    }
+
+    @Override
+    public void exitSub(HolyJavaParser.SubContext context) {
+        final var value1 = stack.pop();
+        final var value2 = stack.pop();
+
+        if (!value1.type.equals(value2.type)) {
+            error(context.getStart().getLine(), "sub type mismatch");
+        }
+
+        final var result = LLVMGenerator.sub(value1, value2);
+        stack.push(result);
+    }
+
+    @Override
+    public void exitDiv(HolyJavaParser.DivContext context) {
+        final var value1 = stack.pop();
+        final var value2 = stack.pop();
+
+        if (!value1.type.equals(value2.type)) {
+            error(context.getStart().getLine(), "div type mismatch");
+        }
+
+        final var result = LLVMGenerator.div(value1, value2);
+        stack.push(result);
+    }
+
+    @Override
+    public void exitMult(HolyJavaParser.MultContext context) {
+        final var value1 = stack.pop();
+        final var value2 = stack.pop();
+
+        if (!value1.type.equals(value2.type)) {
+            error(context.getStart().getLine(), "mult type mismatch");
+        }
+
+        final var result = LLVMGenerator.mult(value1, value2);
+        stack.push(result);
     }
 
     @Override
     public void exitNeg(HolyJavaParser.NegContext context) {
-        final var value1 = stack.pop();
+        final var value = stack.pop();
 
-        if (value1.type != PrimitiveType.BOOLEAN) {
+        if (value.type != PrimitiveType.BOOLEAN) {
             error(context.getStart().getLine(), "NEG type mismatch");
         }
 
-        LLVMGenerator.negation(value1.name);
-        stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
+        LLVMGenerator.neg(value);
+        stack.push(new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
     }
 
     @Override
@@ -456,19 +354,13 @@ class LLVMActions extends HolyJavaBaseListener {
             return;
         }
 
-        if (value.type == PrimitiveType.FLOAT) {
-            LLVMGenerator.fptrunc_double(value.name);
+        switch (value.type) {
+            case INT, LONG -> LLVMGenerator.sitofp(value, PrimitiveType.FLOAT);
+            case FLOAT -> LLVMGenerator.trunc(value);
+            default -> error(context.getStart().getLine(), "type mismatch");
         }
 
-        if (value.type == PrimitiveType.INT) {
-            LLVMGenerator.sitofp_int32_float(value.name);
-        }
-
-        if (value.type == PrimitiveType.LONG) {
-            LLVMGenerator.sitofp_i64_float(value.name);
-        }
-
-        stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.FLOAT));
+        stack.push(new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.FLOAT));
     }
 
     @Override
@@ -479,19 +371,13 @@ class LLVMActions extends HolyJavaBaseListener {
             return;
         }
 
-        if (value.type == PrimitiveType.LONG) {
-            LLVMGenerator.trunc_i64(value.name);
+        switch (value.type) {
+            case LONG -> LLVMGenerator.trunc(value);
+            case FLOAT, DOUBLE -> LLVMGenerator.fptosi(value, PrimitiveType.INT);
+            default -> error(context.getStart().getLine(), "type mismatch");
         }
 
-        if (value.type == PrimitiveType.FLOAT) {
-            LLVMGenerator.fptosi_float_i32(value.name);
-        }
-
-        if (value.type == PrimitiveType.DOUBLE) {
-            LLVMGenerator.fptosi_double_i32(value.name);
-        }
-
-        stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.INT));
+        stack.push(new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.INT));
     }
 
     @Override
@@ -502,19 +388,13 @@ class LLVMActions extends HolyJavaBaseListener {
             return;
         }
 
-        if (value.type == PrimitiveType.INT) {
-            LLVMGenerator.sext_i32(value.name);
+        switch (value.type) {
+            case INT -> LLVMGenerator.ext(value);
+            case FLOAT, DOUBLE -> LLVMGenerator.fptosi(value, PrimitiveType.LONG);
+            default -> error(context.getStart().getLine(), "type mismatch");
         }
 
-        if (value.type == PrimitiveType.FLOAT) {
-            LLVMGenerator.fptosi_float_i64(value.name);
-        }
-
-        if (value.type == PrimitiveType.DOUBLE) {
-            LLVMGenerator.fptosi_double_i64(value.name);
-        }
-
-        stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.LONG));
+        stack.push(new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.LONG));
     }
 
     @Override
@@ -525,24 +405,18 @@ class LLVMActions extends HolyJavaBaseListener {
             return;
         }
 
-        if (value.type == PrimitiveType.FLOAT) {
-            LLVMGenerator.fpext_float(value.name);
+        switch (value.type) {
+            case INT, LONG -> LLVMGenerator.sitofp(value, PrimitiveType.DOUBLE);
+            case FLOAT -> LLVMGenerator.ext(value);
+            default -> error(context.getStart().getLine(), "type mismatch");
         }
 
-        if (value.type == PrimitiveType.INT) {
-            LLVMGenerator.sitofp_i32_double(value.name);
-        }
-
-        if (value.type == PrimitiveType.LONG) {
-            LLVMGenerator.sitofp_i64_double(value.name);
-        }
-
-        stack.push(new Value("%" + (LLVMGenerator.register - 1), PrimitiveType.DOUBLE));
+        stack.push(new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.DOUBLE));
     }
 
     @Override
     public void exitMatrixvalue(HolyJavaParser.MatrixvalueContext context) {
-        final var matrix = (Matrix) variables.get(context.ID().getText());
+        final var matrix = (Matrix) getVariable(context.ID().getText(), context);
 
         if (matrix == null) {
             error(context.getStart().getLine(), "unknown matrix " + context.ID().getText());
@@ -560,20 +434,20 @@ class LLVMActions extends HolyJavaBaseListener {
         }
 
         if (rowIndex.type == PrimitiveType.INT) {
-            LLVMGenerator.sext_i32(rowIndex.name);
+            LLVMGenerator.ext(rowIndex);
         }
 
         if (columnIndex.type == PrimitiveType.INT) {
-            LLVMGenerator.sext_i32(columnIndex.name);
+            LLVMGenerator.ext(columnIndex);
         }
 
-        LLVMGenerator.load_matrix_value(matrix.name, matrix.length, matrix.rowLength, rowIndex.name, columnIndex.name, matrix.type.llvmType());
-        stack.push(new Value("%" + (LLVMGenerator.register - 1), matrix.type));
+        LLVMGenerator.load_matrix_value(matrix, rowIndex.name(), columnIndex.name());
+        stack.push(new Value(String.valueOf(LLVMGenerator.register - 1), matrix.type));
     }
 
     @Override
     public void exitArrayvalue(HolyJavaParser.ArrayvalueContext context) {
-        final var array = variables.get(context.ID().getText());
+        final var array = (Array) getVariable(context.ID().getText(), context);
 
         if (array == null) {
             error(context.getStart().getLine(), "unknown array " + context.ID().getText());
@@ -586,66 +460,61 @@ class LLVMActions extends HolyJavaBaseListener {
         }
 
         if (index.type == PrimitiveType.INT) {
-            var subindex = index.name.substring(0, index.name.length() - 1);
-            var subIndexValue = Integer.parseInt(subindex);
-            if (subIndexValue > (array.length -1) || subIndexValue < 0) {
+            final var subIndex = index.name().substring(0, index.name().length() - 1);
+            final var subIndexValue = Integer.parseInt(subIndex);
+
+            if (subIndexValue > (array.length - 1) || subIndexValue < 0) {
                 error(context.getStart().getLine(), "array index out of range");
             }
-            LLVMGenerator.sext_i32(index.name);
+
+            LLVMGenerator.ext(index);
         }
 
-        var indexValue = Integer.parseInt(index.name);
-        if (indexValue > (array.length -1) || indexValue < 0) {
+        final var indexValue = Integer.parseInt(index.name());
+
+        if (indexValue > (array.length - 1) || indexValue < 0) {
             error(context.getStart().getLine(), "array index out of range");
         }
 
-        LLVMGenerator.load_array_value(array.name, array.length, index.name, array.type.llvmType());
-        stack.push(new Value("%" + (LLVMGenerator.register - 1), array.type));
+        LLVMGenerator.load_array_value(array, index.name());
+        stack.push(new Value(String.valueOf(LLVMGenerator.register - 1), array.type));
     }
 
     @Override
     public void exitId(HolyJavaParser.IdContext context) {
         final var ID = context.ID().getText();
 
-        if (!variables.containsKey(ID)) {
+        if (isVariableUndefined(ID)) {
             error(context.getStart().getLine(), "unknown variable " + ID);
         }
 
-        final var value = variables.get(ID);
-        switch (value.type) {
-            case INT -> LLVMGenerator.load_i32(ID);
-            case LONG -> LLVMGenerator.load_i64(ID);
-            case FLOAT -> LLVMGenerator.load_float(ID);
-            case DOUBLE -> LLVMGenerator.load_double(ID);
-            case BOOLEAN -> LLVMGenerator.load_bool(ID);
-            case STRING -> LLVMGenerator.load_string(ID);
-        }
-
-        stack.push(new Value("%" + (LLVMGenerator.register - 1), value.type, value.length));
+        final var value = getVariable(ID, context);
+        final var result = LLVMGenerator.load(ID, value, isIdGlobal(ID, context));
+        stack.push(result);
     }
 
     @Override
     public void exitFloat(HolyJavaParser.FloatContext context) {
         final var text = context.FLOAT().getText();
         final var id = text.substring(0, text.length() - 1);
-        stack.push(new Value(id, PrimitiveType.FLOAT));
+        stack.push(new Constant(id, PrimitiveType.FLOAT));
     }
 
     @Override
     public void exitInt(HolyJavaParser.IntContext context) {
         final var text = context.INT().getText();
         final var id = text.substring(0, text.length() - 1);
-        stack.push(new Value(id, PrimitiveType.INT));
+        stack.push(new Constant(id, PrimitiveType.INT));
     }
 
     @Override
     public void exitLong(HolyJavaParser.LongContext context) {
-        stack.push(new Value(context.LONG().getText(), PrimitiveType.LONG));
+        stack.push(new Constant(context.LONG().getText(), PrimitiveType.LONG));
     }
 
     @Override
     public void exitDouble(HolyJavaParser.DoubleContext context) {
-        stack.push(new Value(context.DOUBLE().getText(), PrimitiveType.DOUBLE));
+        stack.push(new Constant(context.DOUBLE().getText(), PrimitiveType.DOUBLE));
     }
 
     @Override
@@ -654,16 +523,63 @@ class LLVMActions extends HolyJavaBaseListener {
         final var content = tmp.substring(1, tmp.length() - 1);
         LLVMGenerator.constant_string(content);
         final var id = "str" + (LLVMGenerator.str - 1);
-        stack.push(new Value(id, PrimitiveType.STRING, content.length()));
+        stack.push(new Value(id, PrimitiveType.STRING, content.length(), isGlobalContext));
     }
 
     @Override
     public void exitBool(HolyJavaParser.BoolContext context) {
         if (Objects.equals(context.BOOL().getText(), "true")) {
-            stack.push(new Value("1", PrimitiveType.BOOLEAN));
+            stack.push(new Constant("1", PrimitiveType.BOOLEAN));
         } else {
-            stack.push(new Value("0", PrimitiveType.BOOLEAN));
+            stack.push(new Constant("0", PrimitiveType.BOOLEAN));
         }
+    }
+
+    private Value getVariable(String id, ParserRuleContext context) {
+        if (isGlobalContext) {
+            final var variable = globalVariables.get(id);
+
+            if (variable != null) {
+                return variable;
+            }
+        }
+
+        final var variable = localVariables.get(id);
+
+        if (variable == null) {
+            error(context.getStart().getLine(), "unknown variable " + id);
+        }
+
+        return variable;
+    }
+
+    private void setVariable(String id, Value value) {
+        if (isGlobalContext) {
+            globalVariables.put(id, value);
+        } else {
+            localVariables.put(id, value);
+        }
+    }
+
+    private boolean isVariableUndefined(String id) {
+        if (isGlobalContext) {
+            return !globalVariables.containsKey(id);
+        }
+
+        return !localVariables.containsKey(id);
+    }
+
+    private boolean isIdGlobal(String id, ParserRuleContext context) {
+        if (globalVariables.containsKey(id)) {
+            return true;
+        }
+
+        if (localVariables.containsKey(id)) {
+            return false;
+        }
+
+        error(context.getStart().getLine(), "unknown variable " + id);
+        return false;
     }
 
     private void error(int line, String message) {
