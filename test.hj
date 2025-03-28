@@ -17,3 +17,9 @@ j = false;
 k = true;
 v = j & i & k;
 print v;
+
+m = 5.4;
+n = 2.7;
+o = 1i;
+p = (m / n) + (double)o;
+print p;

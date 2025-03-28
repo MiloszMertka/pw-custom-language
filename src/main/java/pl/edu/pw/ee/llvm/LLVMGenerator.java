@@ -9,436 +9,25 @@ class LLVMGenerator {
     static int arr = 1;
     static int mat = 1;
 
-    static void printf_i32(String id) {
-        load_i32(id);
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @strpi, i32 0, i32 0), i32 %")
-                .append(register - 1)
-                .append(")\n");
-        register++;
-    }
-
-    static void printf_i64(String id) {
-        load_i64(id);
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @strpi, i32 0, i32 0), i64 %")
-                .append(register - 1)
-                .append(")\n");
-        register++;
-    }
-
-    static void printf_float(String id) {
-        load_float(id);
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @strpd, i32 0, i32 0), float %")
-                .append(register - 1)
-                .append(")\n");
-        register++;
-    }
-
-    static void printf_double(String id) {
-        load_double(id);
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @strpd, i32 0, i32 0), double %")
-                .append(register - 1)
-                .append(")\n");
-        register++;
-    }
-
-    static void declare_i32(String id) {
-        MAIN_TEXT.append("%")
-                .append(id)
-                .append(" = alloca i32\n");
-    }
-
-    static void declare_i64(String id) {
-        MAIN_TEXT.append("%")
-                .append(id)
-                .append(" = alloca i64\n");
-    }
-
-    static void declare_float(String id) {
-        MAIN_TEXT.append("%")
-                .append(id)
-                .append(" = alloca float\n");
-    }
-
-    static void declare_double(String id) {
-        MAIN_TEXT.append("%")
-                .append(id)
-                .append(" = alloca double\n");
-    }
-
-    static void declare_string(String id) {
-        MAIN_TEXT.append("%")
-                .append(id)
-                .append(" = alloca i8*\n");
-    }
-
-    static void declare_array(String id, int size, String type) {
-        MAIN_TEXT.append("%")
-                .append(id)
-                .append(" = alloca [")
-                .append(size)
-                .append(" x ")
-                .append(type)
-                .append("]\n");
-    }
-
-    static void declare_matrix(String id, int rows, int columns, String type) {
-        MAIN_TEXT.append("%")
-                .append(id)
-                .append(" = alloca [")
-                .append(rows)
-                .append(" x [")
-                .append(columns)
-                .append(" x ")
-                .append(type)
-                .append("]*]\n");
-    }
-
-    static void assign_array_item(String id, int length, String index, String value, String type) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = getelementptr inbounds [")
-                .append(length)
-                .append(" x ")
-                .append(type)
-                .append("], [")
-                .append(length)
-                .append(" x ")
-                .append(type)
-                .append("]* %")
-                .append(id)
-                .append(", i64 0, i64 ")
-                .append(index)
-                .append("\n");
-        MAIN_TEXT.append("store ")
-                .append(type)
-                .append(" ")
-                .append(value)
-                .append(", ")
-                .append(type)
-                .append("* %")
-                .append(register)
-                .append("\n");
-        register++;
-    }
-
-    static void assign_matrix_row(String id, int rows, int columns, String index, String value, String type) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = getelementptr inbounds [")
-                .append(rows)
-                .append(" x [")
-                .append(columns)
-                .append(" x ")
-                .append(type)
-                .append("]*], [")
-                .append(rows)
-                .append(" x [")
-                .append(columns)
-                .append(" x ")
-                .append(type)
-                .append("]*]* %")
-                .append(id)
-                .append(", i64 0, i64 ")
-                .append(index)
-                .append("\n");
-        MAIN_TEXT.append("store [")
-                .append(columns)
-                .append(" x ")
-                .append(type)
-                .append("]* %")
-                .append(value)
-                .append(", [")
-                .append(columns)
-                .append(" x ")
-                .append(type)
-                .append("]** %")
-                .append(register)
-                .append("\n");
-        register++;
-    }
-
-    static void assign_matrix_item(String id, int length, int rowLength, String rowIndex, String columnIndex, String value, String type) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = getelementptr inbounds [")
-                .append(length)
-                .append(" x [")
-                .append(rowLength)
-                .append(" x ")
-                .append(type)
-                .append("]*], [")
-                .append(length)
-                .append(" x [")
-                .append(rowLength)
-                .append(" x ")
-                .append(type)
-                .append("]*]* %")
-                .append(id)
-                .append(", i64 0, i64 ")
-                .append(rowIndex)
-                .append("\n");
-        register++;
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = load [")
-                .append(rowLength)
-                .append(" x ")
-                .append(type)
-                .append("]*, [")
-                .append(rowLength)
-                .append(" x ")
-                .append(type)
-                .append("]** %")
-                .append(register - 1)
-                .append("\n");
-        register++;
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = getelementptr inbounds [")
-                .append(rowLength)
-                .append(" x ")
-                .append(type)
-                .append("], [")
-                .append(rowLength)
-                .append(" x ")
-                .append(type)
-                .append("]* %")
-                .append(register - 1)
-                .append(", i64 0, i64 ")
-                .append(columnIndex)
-                .append("\n");
-        MAIN_TEXT.append("store ")
-                .append(type)
-                .append(" ")
-                .append(value)
-                .append(", ")
-                .append(type)
-                .append("* %")
-                .append(register)
-                .append("\n");
-        register++;
-    }
-
-    static void assign_i32(String id, String value) {
-        MAIN_TEXT.append("store i32 ")
-                .append(value)
-                .append(", i32* %")
-                .append(id)
-                .append("\n");
-    }
-
-    static void assign_i64(String id, String value) {
-        MAIN_TEXT.append("store i64 ")
-                .append(value)
-                .append(", i64* %")
-                .append(id)
-                .append("\n");
-    }
-
-    static void assign_float(String id, String value) {
-        MAIN_TEXT.append("store float ")
-                .append(value)
-                .append(", float* %")
-                .append(id)
-                .append("\n");
-    }
-
-    static void assign_double(String id, String value) {
-        MAIN_TEXT.append("store double ")
-                .append(value)
-                .append(", double* %")
-                .append(id)
-                .append("\n");
-    }
-
-    static void assign_string(String id, String value) {
-        if (value.startsWith("%")) {
-            MAIN_TEXT.append("store i8* ")
-                    .append(value)
-                    .append(", i8** %")
-                    .append(id)
-                    .append("\n");
+    static void printf(Value value) {
+        if (value.type == PrimitiveType.BOOLEAN) {
+            printf_bool();
             return;
         }
 
-        MAIN_TEXT.append("store i8* %")
-                .append(value)
-                .append(", i8** %")
-                .append(id)
-                .append("\n");
-    }
-
-    static void load_i32(String id) {
         MAIN_TEXT.append("%")
                 .append(register)
-                .append(" = load i32, i32* %")
-                .append(id)
-                .append("\n");
+                .append(" = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @")
+                .append(value.type.llvmPrintPattern())
+                .append(", i32 0, i32 0), ")
+                .append(value.type.llvmType())
+                .append(" ")
+                .append(value.name())
+                .append(")\n");
         register++;
     }
 
-    static void load_i64(String id) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = load i64, i64* %")
-                .append(id)
-                .append("\n");
-        register++;
-    }
-
-    static void load_float(String id) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = load float, float* %")
-                .append(id)
-                .append("\n");
-        register++;
-    }
-
-    static void load_double(String id) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = load double, double* %")
-                .append(id)
-                .append("\n");
-        register++;
-    }
-
-    static void load_string(String id) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = load i8*, i8** %")
-                .append(id)
-                .append("\n");
-        register++;
-    }
-
-    static void load_array_value(String id, int length, String index, String type) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = getelementptr inbounds [")
-                .append(length)
-                .append(" x ")
-                .append(type)
-                .append("], [")
-                .append(length)
-                .append(" x ")
-                .append(type)
-                .append("]* %")
-                .append(id)
-                .append(", i64 0, i64 ")
-                .append(index)
-                .append("\n");
-        register++;
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = load ")
-                .append(type)
-                .append(", ")
-                .append(type)
-                .append("* %")
-                .append(register - 1)
-                .append("\n");
-        register++;
-    }
-
-    static void load_matrix_value(String id, int length, int rowLength, String rowIndex, String columnIndex, String type) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = getelementptr inbounds [")
-                .append(length)
-                .append(" x [")
-                .append(rowLength)
-                .append(" x ")
-                .append(type)
-                .append("]*], [")
-                .append(length)
-                .append(" x [")
-                .append(rowLength)
-                .append(" x ")
-                .append(type)
-                .append("]*]* %")
-                .append(id)
-                .append(", i64 0, i64 ")
-                .append(rowIndex)
-                .append("\n");
-        register++;
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = load [")
-                .append(rowLength)
-                .append(" x ")
-                .append(type)
-                .append("]*, [")
-                .append(rowLength)
-                .append(" x ")
-                .append(type)
-                .append("]** %")
-                .append(register - 1)
-                .append("\n");
-        register++;
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = getelementptr inbounds [")
-                .append(rowLength)
-                .append(" x ")
-                .append(type)
-                .append("], [")
-                .append(rowLength)
-                .append(" x ")
-                .append(type)
-                .append("]* %")
-                .append(register - 1)
-                .append(", i64 0, i64 ")
-                .append(columnIndex)
-                .append("\n");
-        register++;
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = load ")
-                .append(type)
-                .append(", ")
-                .append(type)
-                .append("* %")
-                .append(register - 1)
-                .append("\n");
-        register++;
-    }
-
-    static void load_bool(String id) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = load i1, i1* %")
-                .append(id)
-                .append("\n");
-        register++;
-    }
-
-    static void declare_bool(String id) {
-        MAIN_TEXT.append("%")
-                .append(id)
-                .append(" = alloca i1\n");
-    }
-
-    static void assign_bool(String id, String value) {
-        MAIN_TEXT.append("store i1 ")
-                .append(value)
-                .append(", i1* %")
-                .append(id)
-                .append("\n");
-    }
-
-    static void printf_bool(String id) {
-        load_bool(id);
-
+    private static void printf_bool() {
         // Porównanie, czy wartość boola to 1 (true) czy 0 (false)
         MAIN_TEXT.append("%")
                 .append(register)
@@ -464,43 +53,324 @@ class LLVMGenerator {
         register++;
     }
 
-    static void and_bool(String val1, String val2) {
+    static void declare(String id, PrimitiveType type, boolean isGlobalContext) {
+        final var text = isGlobalContext ? HEADER_TEXT : MAIN_TEXT;
+        text.append(isGlobalContext ? "@" : "%")
+                .append(id)
+                .append(" = ")
+                .append(isGlobalContext ? "global" : "alloca")
+                .append(" ")
+                .append(type.llvmType())
+                .append(isGlobalContext ?
+                        (type == PrimitiveType.DOUBLE || type == PrimitiveType.FLOAT) ? " 0.0" : " 0"
+                        : "")
+                .append("\n");
+    }
+
+    static void declare(Array array) {
+        final var text = array.isGlobal ? HEADER_TEXT : MAIN_TEXT;
+        text.append(array.name())
+                .append(" = ")
+                .append(array.isGlobal ? "global" : "alloca")
+                .append(" [")
+                .append(array.length)
+                .append(" x ")
+                .append(array.type.llvmType())
+                .append("]")
+                .append(array.isGlobal ? " zeroinitializer" : "")
+                .append("\n");
+    }
+
+    static void declare(Matrix matrix) {
+        final var text = matrix.isGlobal ? HEADER_TEXT : MAIN_TEXT;
+        text.append(matrix.name())
+                .append(" = ")
+                .append(matrix.isGlobal ? "global" : "alloca")
+                .append(" [")
+                .append(matrix.rows.size())
+                .append(" x [")
+                .append(matrix.rowLength)
+                .append(" x ")
+                .append(matrix.type.llvmType())
+                .append("]*]")
+                .append(matrix.isGlobal ? " zeroinitializer" : "")
+                .append("\n");
+    }
+
+    static void assign_array_item(Array array, String index, Value value) {
         MAIN_TEXT.append("%")
                 .append(register)
-                .append(" = and i1 ")
-                .append(val1)
+                .append(" = getelementptr inbounds [")
+                .append(array.length)
+                .append(" x ")
+                .append(value.type.llvmType())
+                .append("], [")
+                .append(array.length)
+                .append(" x ")
+                .append(value.type.llvmType())
+                .append("]* ")
+                .append(array.name())
+                .append(", i64 0, i64 ")
+                .append(index)
+                .append("\n");
+        MAIN_TEXT.append("store ")
+                .append(value.type.llvmType())
+                .append(" ")
+                .append(value.name())
                 .append(", ")
-                .append(val2)
+                .append(value.type.llvmType())
+                .append("* %")
+                .append(register)
                 .append("\n");
         register++;
     }
 
-    static void and_bool_sc(String val1, String val2) {
-        String labelTrue = "and_true_" + register;
-        String labelNotTrue = "and_not_true_" + register;
-        String labelEnd = "and_end_" + register;
-        String result = "%" + register;
-        String trueVal = "%true_" + register;
-        String falseVal = "%false_" + register;
+    static void assign_matrix_row(Matrix matrix, String index, Array value) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = getelementptr inbounds [")
+                .append(matrix.rows.size())
+                .append(" x [")
+                .append(matrix.rowLength)
+                .append(" x ")
+                .append(matrix.type.llvmType())
+                .append("]*], [")
+                .append(matrix.rows.size())
+                .append(" x [")
+                .append(matrix.rowLength)
+                .append(" x ")
+                .append(matrix.type.llvmType())
+                .append("]*]* ")
+                .append(matrix.name())
+                .append(", i64 0, i64 ")
+                .append(index)
+                .append("\n");
+        MAIN_TEXT.append("store [")
+                .append(matrix.rowLength)
+                .append(" x ")
+                .append(matrix.type.llvmType())
+                .append("]* ")
+                .append(value.name())
+                .append(", [")
+                .append(matrix.rowLength)
+                .append(" x ")
+                .append(matrix.type.llvmType())
+                .append("]** %")
+                .append(register)
+                .append("\n");
+        register++;
+    }
+
+    static void assign_matrix_item(Matrix matrix, String rowIndex, String columnIndex, Value value) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = getelementptr inbounds [")
+                .append(matrix.rows.size())
+                .append(" x [")
+                .append(matrix.rowLength)
+                .append(" x ")
+                .append(value.type.llvmType())
+                .append("]*], [")
+                .append(matrix.rows.size())
+                .append(" x [")
+                .append(matrix.rowLength)
+                .append(" x ")
+                .append(value.type.llvmType())
+                .append("]*]* ")
+                .append(matrix.name())
+                .append(", i64 0, i64 ")
+                .append(rowIndex)
+                .append("\n");
+        register++;
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = load [")
+                .append(matrix.rowLength)
+                .append(" x ")
+                .append(value.type.llvmType())
+                .append("]*, [")
+                .append(matrix.rowLength)
+                .append(" x ")
+                .append(value.type.llvmType())
+                .append("]** %")
+                .append(register - 1)
+                .append("\n");
+        register++;
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = getelementptr inbounds [")
+                .append(matrix.rowLength)
+                .append(" x ")
+                .append(value.type.llvmType())
+                .append("], [")
+                .append(matrix.rowLength)
+                .append(" x ")
+                .append(value.type.llvmType())
+                .append("]* %")
+                .append(register - 1)
+                .append(", i64 0, i64 ")
+                .append(columnIndex)
+                .append("\n");
+        MAIN_TEXT.append("store ")
+                .append(value.type.llvmType())
+                .append(" ")
+                .append(value.name())
+                .append(", ")
+                .append(value.type.llvmType())
+                .append("* %")
+                .append(register)
+                .append("\n");
+        register++;
+    }
+
+    static void assign(String id, boolean isGlobalContext, Value value) {
+        MAIN_TEXT.append("store ")
+                .append(value.type.llvmType())
+                .append(" ")
+                .append(value.name())
+                .append(", ")
+                .append(value.type.llvmType())
+                .append("* ")
+                .append(isGlobalContext ? "@" : "%")
+                .append(id)
+                .append("\n");
+    }
+
+    static Value load(String id, Value value, boolean isGlobalContext) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = load ")
+                .append(value.type.llvmType())
+                .append(", ")
+                .append(value.type.llvmType())
+                .append("* ")
+                .append(isGlobalContext ? "@" : "%")
+                .append(id)
+                .append("\n");
+        register++;
+        final var newValue = value.withName(String.valueOf(register - 1));
+        newValue.isGlobal = false;
+        return newValue;
+    }
+
+    static void load_array_value(Array array, String index) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = getelementptr inbounds [")
+                .append(array.length)
+                .append(" x ")
+                .append(array.type.llvmType())
+                .append("], [")
+                .append(array.length)
+                .append(" x ")
+                .append(array.type.llvmType())
+                .append("]* ")
+                .append(array.name())
+                .append(", i64 0, i64 ")
+                .append(index)
+                .append("\n");
+        register++;
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = load ")
+                .append(array.type.llvmType())
+                .append(", ")
+                .append(array.type.llvmType())
+                .append("* %")
+                .append(register - 1)
+                .append("\n");
+        register++;
+    }
+
+    static void load_matrix_value(Matrix matrix, String rowIndex, String columnIndex) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = getelementptr inbounds [")
+                .append(matrix.rows.size())
+                .append(" x [")
+                .append(matrix.rowLength)
+                .append(" x ")
+                .append(matrix.type.llvmType())
+                .append("]*], [")
+                .append(matrix.rows.size())
+                .append(" x [")
+                .append(matrix.rowLength)
+                .append(" x ")
+                .append(matrix.type.llvmType())
+                .append("]*]* ")
+                .append(matrix.name())
+                .append(", i64 0, i64 ")
+                .append(rowIndex)
+                .append("\n");
+        register++;
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = load [")
+                .append(matrix.rowLength)
+                .append(" x ")
+                .append(matrix.type.llvmType())
+                .append("]*, [")
+                .append(matrix.rowLength)
+                .append(" x ")
+                .append(matrix.type.llvmType())
+                .append("]** %")
+                .append(register - 1)
+                .append("\n");
+        register++;
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = getelementptr inbounds [")
+                .append(matrix.rowLength)
+                .append(" x ")
+                .append(matrix.type.llvmType())
+                .append("], [")
+                .append(matrix.rowLength)
+                .append(" x ")
+                .append(matrix.type.llvmType())
+                .append("]* %")
+                .append(register - 1)
+                .append(", i64 0, i64 ")
+                .append(columnIndex)
+                .append("\n");
+        register++;
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = load ")
+                .append(matrix.type.llvmType())
+                .append(", ")
+                .append(matrix.type.llvmType())
+                .append("* %")
+                .append(register - 1)
+                .append("\n");
+        register++;
+    }
+
+    static void and(Value value1, Value value2) {
+        final var labelTrue = "and_true_" + register;
+        final var labelNotTrue = "and_not_true_" + register;
+        final var labelEnd = "and_end_" + register;
+        final var result = "%" + register;
+        final var trueVal = "%true_" + register;
+        final var falseVal = "%false_" + register;
         register++;
 
-        // Jeśli val1 jest fałszywe, skaczemy od razu do końca
+        // Jeśli value1 jest fałszywe, skaczemy od razu do końca
         MAIN_TEXT.append("br i1 ")
-                .append(val1)
+                .append(value1.name())
                 .append(", label %")
                 .append(labelTrue)
                 .append(", label %")
                 .append(labelNotTrue)
                 .append("\n");
 
-        // Blok jeśli val1 == true sprawdzamy val2
+        // Blok jeśli value1 == true sprawdzamy value2
         MAIN_TEXT.append(labelTrue)
                 .append(":\n");
         MAIN_TEXT.append(trueVal)
                 .append(" = and i1 ")
-                .append(val1)
+                .append(value1.name())
                 .append(", ")
-                .append(val2)
+                .append(value2.name())
                 .append("\n");
         MAIN_TEXT.append("br label %")
                 .append(labelEnd)
@@ -508,12 +378,12 @@ class LLVMGenerator {
 
         // jesli nie to zwracamy zero
         MAIN_TEXT.append(labelNotTrue)
-                 .append(":\n");
+                .append(":\n");
         MAIN_TEXT.append(falseVal)
-                 .append(" = and i1 0, 0\n");
+                .append(" = and i1 0, 0\n");
         MAIN_TEXT.append("br label %")
-                 .append(labelEnd)
-                 .append("\n");
+                .append(labelEnd)
+                .append("\n");
 
         MAIN_TEXT.append(labelEnd)
                 .append(":\n")
@@ -522,25 +392,25 @@ class LLVMGenerator {
                 .append(" ], [ ").append(falseVal).append(", %").append(labelNotTrue).append(" ]\n");
     }
 
-    static void or_bool_sc(String val1, String val2) {
-        String labelTrue = "and_true_" + register;
-        String labelNotTrue = "and_not_true_" + register;
-        String labelEnd = "and_end_" + register;
-        String result = "%" + register;
-        String trueVal = "%true_" + register;
-        String falseVal = "%false_" + register;
+    static void or(Value value1, Value value2) {
+        final var labelTrue = "and_true_" + register;
+        final var labelNotTrue = "and_not_true_" + register;
+        final var labelEnd = "and_end_" + register;
+        final var result = "%" + register;
+        final var trueVal = "%true_" + register;
+        final var falseVal = "%false_" + register;
         register++;
 
-        // Jeśli val1 jest prawdziwe, skaczemy od labelTrue
+        // Jeśli value1 jest prawdziwe, skaczemy od labelTrue
         MAIN_TEXT.append("br i1 ")
-                .append(val1)
+                .append(value1.name())
                 .append(", label %")
                 .append(labelTrue)
                 .append(", label %")
                 .append(labelNotTrue)
                 .append("\n");
 
-        // Blok jeśli val1 == true zwracamy od razu prawda
+        // Blok jeśli value1 == true zwracamy od razu prawda
         MAIN_TEXT.append(labelTrue)
                 .append(":\n");
         MAIN_TEXT.append(trueVal)
@@ -550,11 +420,11 @@ class LLVMGenerator {
                 .append(labelEnd)
                 .append("\n");
 
-        // Blok jesli val1 != true obliczamy or
+        // Blok jesli value1 != true obliczamy or
         MAIN_TEXT.append(labelNotTrue)
                 .append(":\n");
         MAIN_TEXT.append(falseVal)
-                .append(" = or i1 ").append(val1).append(", ").append(val2)
+                .append(" = or i1 ").append(value1.name()).append(", ").append(value2.name())
                 .append("\n")
                 .append("br label %")
                 .append(labelEnd)
@@ -568,318 +438,147 @@ class LLVMGenerator {
                 .append(" ], [ ").append(falseVal).append(", %").append(labelNotTrue).append(" ]\n");
     }
 
-    static void or_bool(String val1, String val2) {
+    static void xor(Value value1, Value value2) {
         MAIN_TEXT.append("%")
                 .append(register)
-                .append(" = or i1 ")
-                .append(val1)
+                .append(" = xor i1 ")
+                .append(value1.name())
                 .append(", ")
-                .append(val2)
+                .append(value2.name())
                 .append("\n");
         register++;
     }
 
-    static void xor_bool(String val1, String val2) {
+    static void neg(Value value) {
         MAIN_TEXT.append("%")
                 .append(register)
                 .append(" = xor i1 ")
-                .append(val1)
-                .append(", ")
-                .append(val2)
-                .append("\n");
-        register++;
-    }
-
-    static void negation(String val) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = xor i1 ")
-                .append(val)
+                .append(value.name())
                 .append(", 1\n");  // NOT = XOR z 1
         register++;
     }
 
-    static void add_i32(String val1, String val2) {
+    static Value add(Value value1, Value value2) {
         MAIN_TEXT.append("%")
                 .append(register)
-                .append(" = add i32 ")
-                .append(val1)
+                .append(" = ")
+                .append(isFloatingPoint(value1) ? "f" : "")
+                .append("add ")
+                .append(value1.type.llvmType())
+                .append(" ")
+                .append(value1.name())
                 .append(", ")
-                .append(val2)
+                .append(value2.name())
+                .append("\n");
+        register++;
+        return value1.withName(String.valueOf(register - 1));
+    }
+
+    static Value sub(Value value1, Value value2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = ")
+                .append(isFloatingPoint(value1) ? "f" : "")
+                .append("sub ")
+                .append(value1.type.llvmType())
+                .append(" ")
+                .append(value2.name())
+                .append(", ")
+                .append(value1.name())
+                .append("\n");
+        register++;
+        return value1.withName(String.valueOf(register - 1));
+    }
+
+    static Value mult(Value value1, Value value2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = ")
+                .append(isFloatingPoint(value1) ? "f" : "")
+                .append("mul ")
+                .append(value1.type.llvmType())
+                .append(" ")
+                .append(value1.name())
+                .append(", ")
+                .append(value2.name())
+                .append("\n");
+        register++;
+        return value1.withName(String.valueOf(register - 1));
+    }
+
+    static Value div(Value value1, Value value2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = ")
+                .append(isFloatingPoint(value1) ? "f" : "s")
+                .append("div ")
+                .append(value1.type.llvmType())
+                .append(" ")
+                .append(value2.name())
+                .append(", ")
+                .append(value1.name())
+                .append("\n");
+        register++;
+        return value1.withName(String.valueOf(register - 1));
+    }
+
+    private static boolean isFloatingPoint(Value value) {
+        return value.type == PrimitiveType.FLOAT || value.type == PrimitiveType.DOUBLE;
+    }
+
+    static void ext(Value value) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = ")
+                .append(isFloatingPoint(value) ? "fpext" : "sext")
+                .append(" ")
+                .append(value.type.llvmType())
+                .append(" ")
+                .append(value.name())
+                .append(" to ")
+                .append(isFloatingPoint(value) ? "double" : "i64")
                 .append("\n");
         register++;
     }
 
-    static void add_i64(String val1, String val2) {
+    static void trunc(Value value) {
         MAIN_TEXT.append("%")
                 .append(register)
-                .append(" = add i64 ")
-                .append(val1)
-                .append(", ")
-                .append(val2)
+                .append(" = ")
+                .append(isFloatingPoint(value) ? "fptrunc" : "trunc")
+                .append(" ")
+                .append(value.type.llvmType())
+                .append(" ")
+                .append(value.name())
+                .append(" to ")
+                .append(isFloatingPoint(value) ? "float" : "i32")
                 .append("\n");
         register++;
     }
 
-    static void sub_i32(String val1, String val2) {
+    static void sitofp(Value value, PrimitiveType targetType) {
         MAIN_TEXT.append("%")
                 .append(register)
-                .append(" = sub i32 ")
-                .append(val2)
-                .append(", ")
-                .append(val1)
+                .append(" = sitofp ")
+                .append(value.type.llvmType())
+                .append(" ")
+                .append(value.name())
+                .append(" to ")
+                .append(targetType.llvmType())
                 .append("\n");
         register++;
     }
 
-    static void sub_i64(String val1, String val2) {
+    static void fptosi(Value value, PrimitiveType targetType) {
         MAIN_TEXT.append("%")
                 .append(register)
-                .append(" = sub i64 ")
-                .append(val2)
-                .append(", ")
-                .append(val1)
+                .append(" = fptosi ")
+                .append(value.type.llvmType())
+                .append(" ")
+                .append(value.name())
+                .append(" to ")
+                .append(targetType.llvmType())
                 .append("\n");
-        register++;
-    }
-
-    static void add_float(String val1, String val2) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = fadd float ")
-                .append(val1)
-                .append(", ")
-                .append(val2)
-                .append("\n");
-        register++;
-    }
-
-    static void add_double(String val1, String val2) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = fadd double ")
-                .append(val1)
-                .append(", ")
-                .append(val2)
-                .append("\n");
-        register++;
-    }
-
-    static void sub_float(String val1, String val2) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = fsub float ")
-                .append(val2)
-                .append(", ")
-                .append(val1)
-                .append("\n");
-        register++;
-    }
-
-    static void sub_double(String val1, String val2) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = fsub double ")
-                .append(val2)
-                .append(", ")
-                .append(val1)
-                .append("\n");
-        register++;
-    }
-
-    static void mult_i32(String val1, String val2) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = mul i32 ")
-                .append(val1)
-                .append(", ")
-                .append(val2)
-                .append("\n");
-        register++;
-    }
-
-    static void mult_i64(String val1, String val2) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = mul i64 ")
-                .append(val1)
-                .append(", ")
-                .append(val2)
-                .append("\n");
-        register++;
-    }
-
-    static void div_i32(String val1, String val2) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = sdiv i32 ")
-                .append(val2)
-                .append(", ")
-                .append(val1)
-                .append("\n");
-        register++;
-    }
-
-    static void div_i64(String val1, String val2) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = sdiv i64 ")
-                .append(val2)
-                .append(", ")
-                .append(val1)
-                .append("\n");
-        register++;
-    }
-
-    static void mult_float(String val1, String val2) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = fmul float ")
-                .append(val1)
-                .append(", ")
-                .append(val2)
-                .append("\n");
-        register++;
-    }
-
-    static void mult_double(String val1, String val2) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = fmul double ")
-                .append(val1)
-                .append(", ")
-                .append(val2)
-                .append("\n");
-        register++;
-    }
-
-    static void div_float(String val1, String val2) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = fdiv float ")
-                .append(val2)
-                .append(", ")
-                .append(val1)
-                .append("\n");
-        register++;
-    }
-
-    static void div_double(String val1, String val2) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = fdiv double ")
-                .append(val2)
-                .append(", ")
-                .append(val1)
-                .append("\n");
-        register++;
-    }
-
-    static void sext_i32(String id) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = sext i32 ")
-                .append(id)
-                .append(" to i64\n");
-        register++;
-    }
-
-    static void trunc_i64(String id) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = trunc i64 ")
-                .append(id)
-                .append(" to i32\n");
-        register++;
-    }
-
-    static void fpext_float(String id) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = fpext float ")
-                .append(id)
-                .append(" to double\n");
-        register++;
-    }
-
-    static void fptrunc_double(String id) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = fptrunc double ")
-                .append(id)
-                .append(" to float\n");
-        register++;
-    }
-
-    static void sitofp_int32_float(String id) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = sitofp i32 ")
-                .append(id)
-                .append(" to float\n");
-        register++;
-    }
-
-    static void sitofp_i32_double(String id) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = sitofp i32 ")
-                .append(id)
-                .append(" to double\n");
-        register++;
-    }
-
-    static void sitofp_i64_float(String id) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = sitofp i64 ")
-                .append(id)
-                .append(" to float\n");
-        register++;
-    }
-
-    static void sitofp_i64_double(String id) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = sitofp i64 ")
-                .append(id)
-                .append(" to double\n");
-        register++;
-    }
-
-    static void fptosi_float_i32(String id) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = fptosi float ")
-                .append(id)
-                .append(" to i32\n");
-        register++;
-    }
-
-    static void fptosi_float_i64(String id) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = fptosi float ")
-                .append(id)
-                .append(" to i64\n");
-        register++;
-    }
-
-    static void fptosi_double_i32(String id) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = fptosi double ")
-                .append(id)
-                .append(" to i32\n");
-        register++;
-    }
-
-    static void fptosi_double_i64(String id) {
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = fptosi double ")
-                .append(id)
-                .append(" to i64\n");
         register++;
     }
 
@@ -889,16 +588,6 @@ class LLVMGenerator {
                 .append(" = alloca [")
                 .append(length + 1)
                 .append(" x i8]\n");
-    }
-
-    static void printf_string(String id) {
-        load_string(id);
-        MAIN_TEXT.append("%")
-                .append(register)
-                .append(" = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @strps, i32 0, i32 0), i8* %")
-                .append(register - 1)
-                .append(")\n");
-        register++;
     }
 
     static void constant_string(String content) {
@@ -911,7 +600,7 @@ class LLVMGenerator {
                 .append(content)
                 .append("\\00\"\n");
         final var id = "str" + str;
-        LLVMGenerator.allocate_string(id, (length - 1));
+        allocate_string(id, (length - 1));
         MAIN_TEXT.append("%")
                 .append(register)
                 .append(" = bitcast [")
