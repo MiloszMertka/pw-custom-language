@@ -61,9 +61,7 @@ class LLVMGenerator {
                 .append(isGlobalContext ? "global" : "alloca")
                 .append(" ")
                 .append(type.llvmType())
-                .append(isGlobalContext ?
-                        (type == PrimitiveType.DOUBLE || type == PrimitiveType.FLOAT) ? " 0.0" : " 0"
-                        : "")
+                .append(isGlobalContext ? " " + type.llvmZeroValue() : "")
                 .append("\n");
     }
 

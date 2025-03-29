@@ -23,3 +23,6 @@ n = 2.7;
 o = 1i;
 p = (m / n) + (double)o;
 print p;
+
+str = "Hello, World!";
+print str;
