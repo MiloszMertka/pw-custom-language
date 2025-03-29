@@ -39,6 +39,24 @@ ff = "strf";
 gg = ee == ff;
 print gg;
 
+/* not Equal */
+de = 3.0;
+df = 2.0;
+dg = ee != ff;
+print gg;
+
+/* Less */
+le = 2;
+lf = 3;
+lg = le < lf;
+print lg;
+
+/* Greater */
+ge = 2.0;
+gf = 3.0;
+ggg = ge > gf;
+print ggg;
+
 /* String support */
 hello = "Hello, World!";
 print hello;

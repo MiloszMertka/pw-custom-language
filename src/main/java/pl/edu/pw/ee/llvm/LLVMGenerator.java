@@ -505,9 +505,99 @@ class LLVMGenerator {
 
         MAIN_TEXT.append("%")
                 .append(register)
-                .append(" = icmp eq i32")
+                .append(" = icmp eq i32 ")
                 .append(result)
                 .append(", 0\n");
+        register++;
+    }
+
+    static void not_equal_i(Value value1, Value value2) {
+        equal_i(value1, value2);
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append("xor i1 %")
+                .append(register - 1)
+                .append(", 1\n");
+        register++;
+    }
+
+    static void not_equal_f(Value value1, Value value2) {
+        equal_f(value1, value2);
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append("xor i1 %")
+                .append(register - 1)
+                .append(", 1\n");
+        register++;
+    }
+
+    static void not_equal_s(Value value1, Value value2) {
+        equal_s(value1, value2);
+        MAIN_TEXT.append("%")
+            .append(register)
+            .append(" = xor i1 %")
+            .append(register - 1)
+            .append(", 1\n");
+        register++;
+    }
+
+    static void less_i(Value value1, Value value2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = ")
+                .append(value1.type.llvmComparator())
+                .append(" ult ")
+                .append(value2.type.llvmType())
+                .append(" ")
+                .append(value2.name())
+                .append(", ")
+                .append(value1.name())
+                .append("\n");
+        register++;
+    }
+
+    static void less_f(Value value1, Value value2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = ")
+                .append(value1.type.llvmComparator())
+                .append(" olt ")
+                .append(value2.type.llvmType())
+                .append(" ")
+                .append(value2.name())
+                .append(", ")
+                .append(value1.name())
+                .append("\n");
+        register++;
+    }
+
+    static void greater_i(Value value1, Value value2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = ")
+                .append(value1.type.llvmComparator())
+                .append(" ugt ")
+                .append(value2.type.llvmType())
+                .append(" ")
+                .append(value2.name())
+                .append(", ")
+                .append(value1.name())
+                .append("\n");
+        register++;
+    }
+
+    static void greater_f(Value value1, Value value2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = ")
+                .append(value1.type.llvmComparator())
+                .append(" ogt ")
+                .append(value2.type.llvmType())
+                .append(" ")
+                .append(value2.name())
+                .append(", ")
+                .append(value1.name())
+                .append("\n");
         register++;
     }
 

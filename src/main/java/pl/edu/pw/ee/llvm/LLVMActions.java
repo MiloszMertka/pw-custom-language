@@ -358,6 +358,78 @@ class LLVMActions extends HolyJavaBaseListener {
     }
 
     @Override
+    public void exitNotequal(HolyJavaParser.NotequalContext context) {
+        final var value1 = stack.pop();
+        final var value2 = stack.pop();
+
+        if (!value1.type.equals(value2.type)) {
+            error(context.getStart().getLine(), "NOT_EQUAL type mismatch");
+        }
+
+        if (value1.type == PrimitiveType.INT || value1.type == PrimitiveType.BOOLEAN || value1.type == PrimitiveType.LONG) {
+            LLVMGenerator.not_equal_i(value1, value2);
+        }
+
+        if (value1.type == PrimitiveType.DOUBLE || value1.type == PrimitiveType.FLOAT) {
+            LLVMGenerator.not_equal_f(value1, value2);
+        }
+
+        if (value1.type == PrimitiveType.STRING) {
+            LLVMGenerator.not_equal_s(value1, value2);
+        }
+
+        stack.push(new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
+    }
+
+    @Override
+    public void exitLess(HolyJavaParser.LessContext context) {
+        final var value1 = stack.pop();
+        final var value2 = stack.pop();
+
+        if (!value1.type.equals(value2.type)) {
+            error(context.getStart().getLine(), "LESS type mismatch");
+        }
+
+        if (value1.type == PrimitiveType.STRING || value1.type == PrimitiveType.BOOLEAN) {
+            error(context.getStart().getLine(), "LESS type invalid");
+        }
+
+        if (value1.type == PrimitiveType.INT || value1.type == PrimitiveType.LONG) {
+            LLVMGenerator.less_i(value1, value2);
+        }
+
+        if (value1.type == PrimitiveType.DOUBLE || value1.type == PrimitiveType.FLOAT) {
+            LLVMGenerator.less_f(value1, value2);
+        }
+
+        stack.push(new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
+    }
+
+    @Override
+    public void exitGreater(HolyJavaParser.GreaterContext context) {
+        final var value1 = stack.pop();
+        final var value2 = stack.pop();
+
+        if (!value1.type.equals(value2.type)) {
+            error(context.getStart().getLine(), "GRATER type mismatch");
+        }
+
+        if (value1.type == PrimitiveType.STRING || value1.type == PrimitiveType.BOOLEAN) {
+            error(context.getStart().getLine(), "GREATER type invalid");
+        }
+
+        if (value1.type == PrimitiveType.INT || value1.type == PrimitiveType.LONG) {
+            LLVMGenerator.greater_i(value1, value2);
+        }
+
+        if (value1.type == PrimitiveType.DOUBLE || value1.type == PrimitiveType.FLOAT) {
+            LLVMGenerator.greater_f(value1, value2);
+        }
+
+        stack.push(new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
+    }
+
+    @Override
     public void exitAdd(HolyJavaParser.AddContext context) {
         final var value1 = stack.pop();
         final var value2 = stack.pop();
