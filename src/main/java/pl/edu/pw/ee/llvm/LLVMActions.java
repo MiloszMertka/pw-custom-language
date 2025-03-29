@@ -290,6 +290,30 @@ class LLVMActions extends HolyJavaBaseListener {
     }
 
     @Override
+    public void exitEqual(HolyJavaParser.EqualContext context) {
+        final var value1 = stack.pop();
+        final var value2 = stack.pop();
+
+        if (!value1.type.equals(value2.type)) {
+            error(context.getStart().getLine(), "EQUAL type mismatch");
+        }
+
+        if (value1.type == PrimitiveType.INT || value1.type == PrimitiveType.BOOLEAN || value1.type == PrimitiveType.LONG) {
+            LLVMGenerator.equal_i(value1, value2);
+        }
+
+        if (value1.type == PrimitiveType.DOUBLE || value1.type == PrimitiveType.FLOAT) {
+            LLVMGenerator.equal_f(value1, value2);
+        }
+
+        if (value1.type == PrimitiveType.STRING) {
+            LLVMGenerator.equal_s(value1, value2);
+        }
+
+        stack.push(new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
+    }
+
+    @Override
     public void exitAdd(HolyJavaParser.AddContext context) {
         final var value1 = stack.pop();
         final var value2 = stack.pop();

@@ -456,6 +456,57 @@ class LLVMGenerator {
         register++;
     }
 
+    static void equal_i(Value value1, Value value2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = ")
+                .append(value1.type.llvmComparator())
+                .append(" eq ")
+                .append(value2.type.llvmType())
+                .append(" ")
+                .append(value1.name())
+                .append(", ")
+                .append(value2.name())
+                .append("\n");
+        register++;
+    }
+
+    static void equal_f(Value value1, Value value2) {
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = ")
+                .append(value1.type.llvmComparator())
+                .append(" oeq ")
+                .append(value2.type.llvmType())
+                .append(" ")
+                .append(value1.name())
+                .append(", ")
+                .append(value2.name())
+                .append("\n");
+        register++;
+    }
+
+    static void equal_s(Value value1, Value value2) {
+        final var result = "%result_" + register;
+        MAIN_TEXT.append(result)
+                .append(" = call i32 @strcmp(")
+                .append(value1.type.llvmType())
+                .append(" ")
+                .append(value1.name())
+                .append(", ")
+                .append(value2.type.llvmType())
+                .append(" ")
+                .append(value2.name())
+                .append(")\n");
+
+        MAIN_TEXT.append("%")
+                .append(register)
+                .append(" = icmp eq i32")
+                .append(result)
+                .append(", 0\n");
+        register++;
+    }
+
     static Value add(Value value1, Value value2) {
         MAIN_TEXT.append("%")
                 .append(register)
@@ -654,6 +705,7 @@ class LLVMGenerator {
                 "declare i8* @strcpy(i8*, i8*)\n" +
                 "declare i8* @strcat(i8*, i8*)\n" +
                 "declare i32 @scanf(i8*, ...)\n" +
+                "declare i32 @strcmp(i8*, i8*)\n" +
                 "declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg)\n" +
                 "@strps = constant [4 x i8] c\"%s\\0A\\00\"\n" +
                 "@strpi = constant [4 x i8] c\"%d\\0A\\00\"\n" +

@@ -28,6 +28,16 @@ o = 1i;
 p = (m / n) + (double)o;
 print p;
 
+/* Negation */
+lk = false;
+lu = !lk;
+print lu;
+
+/* Equal */
+ee = "str";
+ff = "strf";
+gg = ee == ff;
+print gg;
 
 /* String support */
 hello = "Hello, World!";
