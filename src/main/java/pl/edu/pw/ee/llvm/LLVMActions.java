@@ -161,6 +161,13 @@ class LLVMActions extends HolyJavaBaseListener {
         }
 
         final var value = getVariable(ID, context);
+
+        if (value.type == PrimitiveType.STRING) {
+            final var loadedValue = LLVMGenerator.load(ID, value, isIdGlobal(ID, context));
+            LLVMGenerator.printf(loadedValue);
+            return;
+        }
+
         LLVMGenerator.printf(value);
     }
 
@@ -169,7 +176,7 @@ class LLVMActions extends HolyJavaBaseListener {
         final var ID = context.ID().getText();
         final var value = new Value(ID, PrimitiveType.STRING, BUFFER_SIZE - 1, isGlobalContext);
         setVariable(ID, value);
-        LLVMGenerator.scanf(ID, BUFFER_SIZE);
+        LLVMGenerator.scanf(value);
     }
 
     @Override

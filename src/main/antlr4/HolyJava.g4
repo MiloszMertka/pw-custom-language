@@ -4,8 +4,8 @@ grammar HolyJava;
 package pl.edu.pw.ee;
 }
 
-programme:    (function|(statement? SEMICOLON))*
-            ;
+programme: (COMMENT|function|(statement? SEMICOLON))*
+    ;
 
 statement:    ID '[' expr0 ']' '[' expr0 ']' '=' expr0	    #assignmatrix
             | ID '[' expr0 ']' '=' expr0	                #assignarray
@@ -87,6 +87,9 @@ type:     INTTYPE
         | DOUBLETYPE
         | BOOLTYPE
         ;
+
+COMMENT: '/*' .*? '*/' -> channel(HIDDEN)
+    ;
 
 FUN: 'fun'
     ;
@@ -178,5 +181,5 @@ NEG: '!'
 SEMICOLON: ';'
     ;
 
-WHITESPACE: (' '|'\t'|'\r'|'\n')+ { skip(); }
+WHITESPACE: (' '|'\t'|'\r'|'\n')+ -> channel(HIDDEN)
     ;

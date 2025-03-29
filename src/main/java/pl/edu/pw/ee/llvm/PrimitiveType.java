@@ -1,21 +1,23 @@
 package pl.edu.pw.ee.llvm;
 
 public enum PrimitiveType {
-    INT("i32", "strpi"),
-    LONG("i64", "strpi"),
-    FLOAT("float", "strpd"),
-    DOUBLE("double", "strpd"),
-    STRING("i8*", "strps"),
-    BOOLEAN("i1", "strpb"),
-    VOID("void", ""),
-    UNKNOWN("", "");
+    INT("i32", "strpi", "0"),
+    LONG("i64", "strpi", "0"),
+    FLOAT("float", "strpd", "0.0"),
+    DOUBLE("double", "strpd", "0.0"),
+    STRING("i8*", "strps", "null"),
+    BOOLEAN("i1", "strpb", "0"),
+    VOID("void", "", ""),
+    UNKNOWN("", "", "");
 
     private final String llvmType;
     private final String llvmPrintPattern;
+    private final String llvmZeroValue;
 
-    PrimitiveType(String llvmType, String llvmPrintPattern) {
+    PrimitiveType(String llvmType, String llvmPrintPattern, String llvmZeroValue) {
         this.llvmType = llvmType;
         this.llvmPrintPattern = llvmPrintPattern;
+        this.llvmZeroValue = llvmZeroValue;
     }
 
     public String llvmType() {
@@ -24,5 +26,9 @@ public enum PrimitiveType {
 
     public String llvmPrintPattern() {
         return llvmPrintPattern;
+    }
+
+    public String llvmZeroValue() {
+        return llvmZeroValue;
     }
 }

@@ -1,3 +1,4 @@
+/* Matrix support */
 x = [
     [1, 2, 3]
     [4, 5, 6]
@@ -7,19 +8,29 @@ x[1][1] = 10;
 y = x[1][1];
 print y;
 
+/* Array support */
 a = [1, 2, 3];
 a[1] = 5;
 b = a[1];
 print b;
 
+/* Short-circuit boolean expression */
 i = true;
 j = false;
 k = true;
 v = j & i & k;
 print v;
 
+/* Arithmetics with casting and different precision */
 m = 5.4;
 n = 2.7;
 o = 1i;
 p = (m / n) + (double)o;
 print p;
+
+
+/* String support */
+hello = "Hello, World!";
+print hello;
+read fromUser;
+print fromUser;
