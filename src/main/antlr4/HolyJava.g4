@@ -15,6 +15,7 @@ statement:    ID '[' expr0 ']' '[' expr0 ']' '=' expr0	    #assignmatrix
             | PRINT ID   		                            #print
             | READ ID		                                #read
             | RETURN expr0                                  #return
+            | functioncall                                  #voidfuncall
             ;
 
 function: funheader block #fundef
@@ -30,6 +31,9 @@ param: type ID #paramdef
     ;
 
 block: '{' (statement? SEMICOLON)* '}' #statementblock
+    ;
+
+functioncall: ID '(' (expr0 (',' expr0)*)? ')' #funcall
     ;
 
 matitem: arr #matrixitem
@@ -63,14 +67,14 @@ expr4:    expr5			        #single4
         | expr4 DIVIDE expr5	#div
         ;
 
-expr5:    value                               #val
-        | NEG expr5		                      #neg
-        | TOFLOAT expr2                       #tofloat
-        | TOINT expr2		                  #toint
-        | TOLONG expr2		                  #tolong
-        | TODOUBLE expr2	                  #todouble
-        | '(' expr0 ')'		                  #par
-        | ID '(' (expr0 (',' expr0)*)? ')'    #funcall
+expr5:    value             #val
+        | NEG expr5		    #neg
+        | TOFLOAT expr2     #tofloat
+        | TOINT expr2		#toint
+        | TOLONG expr2		#tolong
+        | TODOUBLE expr2	#todouble
+        | '(' expr0 ')'		#par
+        | functioncall      #nonvoidfuncall
         ;
 
 value:    ID '[' expr0 ']' '[' expr0 ']' #matrixvalue

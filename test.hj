@@ -39,7 +39,7 @@ print fromUser;
 fun int add(int a, int b) {
     return a + b;
 }
-result = add(5, 10);
+result = add(5i, 10i);
 print result;
 
 fun void sayhello() {

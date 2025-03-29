@@ -1,5 +1,7 @@
 package pl.edu.pw.ee.llvm;
 
+import java.util.List;
+
 class LLVMGenerator {
 
     private static final StringBuilder HEADER_TEXT = new StringBuilder();
@@ -686,6 +688,35 @@ class LLVMGenerator {
         }
 
         CURRENT_TEXT.append("}\n");
+    }
+
+    static void callFunction(Function function, List<Value> args) {
+        if (function.returnType != PrimitiveType.VOID) {
+            CURRENT_TEXT.append("%")
+                    .append(register)
+                    .append(" = ");
+        }
+
+        CURRENT_TEXT.append("call ")
+                .append(function.returnType.llvmType())
+                .append(" @")
+                .append(function.name)
+                .append("(");
+
+        for (var i = 0; i < args.size(); i++) {
+            final var arg = args.get(i);
+
+            CURRENT_TEXT.append(arg.type.llvmType())
+                    .append(" ")
+                    .append(arg.name());
+
+            if (i != args.size() - 1) {
+                CURRENT_TEXT.append(", ");
+            }
+        }
+
+        CURRENT_TEXT.append(")\n");
+        register++;
     }
 
     static void commit() {

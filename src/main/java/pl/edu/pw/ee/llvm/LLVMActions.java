@@ -7,10 +7,7 @@ import pl.edu.pw.ee.HolyJavaParser;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Stack;
+import java.util.*;
 
 class LLVMActions extends HolyJavaBaseListener {
 
@@ -466,6 +463,40 @@ class LLVMActions extends HolyJavaBaseListener {
         }
 
         stack.push(new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.DOUBLE));
+    }
+
+    @Override
+    public void exitFuncall(HolyJavaParser.FuncallContext context) {
+        final var ID = context.ID().getText();
+        final var function = functions.get(ID);
+
+        if (function == null) {
+            error(context.getStart().getLine(), "unknown function " + ID);
+        }
+
+        if (function.parameters.size() != context.expr0().size()) {
+            error(context.getStart().getLine(), "function parameter count mismatch");
+        }
+
+        final List<Value> arguments = new LinkedList<>();
+
+        for (var i = 0; i < function.parameters.size(); i++) {
+            final var parameter = function.parameters.get(i);
+            final var argument = stack.pop();
+
+            if (parameter.type != argument.type) {
+                error(context.getStart().getLine(), "function parameter type mismatch");
+            }
+
+            arguments.add(argument);
+        }
+
+        LLVMGenerator.callFunction(function, arguments);
+
+        if (function.returnType != PrimitiveType.VOID) {
+            final var result = new Value(String.valueOf(LLVMGenerator.register - 1), function.returnType);
+            stack.push(result);
+        }
     }
 
     @Override
