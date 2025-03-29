@@ -22,6 +22,7 @@ class LLVMActions extends HolyJavaBaseListener {
     private final Stack<Value> stack = new Stack<>();
     private final Stack<Array> arrayStack = new Stack<>();
     private final Stack<Matrix> matrixStack = new Stack<>();
+    private Function currentFunction;
     private boolean isGlobalContext = true;
 
     @Override
@@ -180,14 +181,60 @@ class LLVMActions extends HolyJavaBaseListener {
     }
 
     @Override
+    public void exitReturn(HolyJavaParser.ReturnContext context) {
+        final var value = stack.pop();
+        final var returnType = currentFunction.returnType;
+
+        if (returnType == PrimitiveType.VOID) {
+            error(context.getStart().getLine(), "void function cannot return a value");
+        }
+
+        if (value.type != returnType) {
+            error(context.getStart().getLine(), "return type mismatch");
+        }
+
+        LLVMGenerator.ret(value);
+    }
+
+    @Override
     public void enterFundef(HolyJavaParser.FundefContext context) {
         isGlobalContext = false;
+        LLVMGenerator.setMainContext(false);
     }
 
     @Override
     public void exitFundef(HolyJavaParser.FundefContext context) {
+        LLVMGenerator.closeFunction(currentFunction);
         isGlobalContext = true;
+        LLVMGenerator.commit();
+        LLVMGenerator.setMainContext(true);
         localVariables.clear();
+        currentFunction = null;
+    }
+
+    @Override
+    public void enterFundefheader(HolyJavaParser.FundefheaderContext context) {
+        final var id = context.ID().getText();
+        final var returnTypeKeyword = context.type() == null ? context.VOID().getText() : context.type().getText();
+        final var returnType = PrimitiveType.fromKeyword(returnTypeKeyword);
+        final var function = new Function(id, returnType);
+        functions.put(id, function);
+        currentFunction = function;
+    }
+
+    @Override
+    public void exitFundefheader(HolyJavaParser.FundefheaderContext context) {
+        LLVMGenerator.defineFunction(currentFunction);
+    }
+
+    @Override
+    public void exitParamdef(HolyJavaParser.ParamdefContext context) {
+        final var id = context.ID().getText();
+        final var typeKeyword = context.type().getText();
+        final var type = PrimitiveType.fromKeyword(typeKeyword);
+        final var parameter = new Parameter(id, type);
+        currentFunction.parameters.add(parameter);
+        setVariable(id, parameter);
     }
 
     @Override
@@ -496,6 +543,12 @@ class LLVMActions extends HolyJavaBaseListener {
         }
 
         final var value = getVariable(ID, context);
+
+        if (value instanceof Parameter) {
+            stack.push(value);
+            return;
+        }
+
         final var result = LLVMGenerator.load(ID, value, isIdGlobal(ID, context));
         stack.push(result);
     }
@@ -554,6 +607,12 @@ class LLVMActions extends HolyJavaBaseListener {
         final var variable = localVariables.get(id);
 
         if (variable == null) {
+            final var globalVariable = globalVariables.get(id);
+
+            if (globalVariable != null) {
+                return globalVariable;
+            }
+
             error(context.getStart().getLine(), "unknown variable " + id);
         }
 
@@ -573,16 +632,20 @@ class LLVMActions extends HolyJavaBaseListener {
             return !globalVariables.containsKey(id);
         }
 
-        return !localVariables.containsKey(id);
+        return !localVariables.containsKey(id) && !globalVariables.containsKey(id);
     }
 
     private boolean isIdGlobal(String id, ParserRuleContext context) {
-        if (globalVariables.containsKey(id)) {
+        if (globalVariables.containsKey(id) && isGlobalContext) {
             return true;
         }
 
         if (localVariables.containsKey(id)) {
             return false;
+        }
+
+        if (globalVariables.containsKey(id)) {
+            return true;
         }
 
         error(context.getStart().getLine(), "unknown variable " + id);

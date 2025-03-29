@@ -16,13 +16,6 @@ public class Value {
         this.isGlobal = isGlobal;
     }
 
-    public Value(String name, PrimitiveType type, boolean isGlobal) {
-        this.name = name;
-        this.type = type;
-        this.length = 0;
-        this.isGlobal = isGlobal;
-    }
-
     public Value(String name, PrimitiveType type) {
         this.name = name;
         this.type = type;

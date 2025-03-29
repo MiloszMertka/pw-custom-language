@@ -4,10 +4,12 @@ class LLVMGenerator {
 
     private static final StringBuilder HEADER_TEXT = new StringBuilder();
     private static final StringBuilder MAIN_TEXT = new StringBuilder();
+    private static final StringBuilder BUFFER_TEXT = new StringBuilder();
     static int register = 1;
     static int str = 1;
     static int arr = 1;
     static int mat = 1;
+    private static StringBuilder CURRENT_TEXT = MAIN_TEXT;
 
     static void printf(Value value) {
         if (value.type == PrimitiveType.BOOLEAN) {
@@ -15,7 +17,7 @@ class LLVMGenerator {
             return;
         }
 
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @")
                 .append(value.type.llvmPrintPattern())
@@ -29,7 +31,7 @@ class LLVMGenerator {
 
     private static void printf_bool() {
         // Porównanie, czy wartość boola to 1 (true) czy 0 (false)
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = icmp eq i1 %")
                 .append(register - 1)
@@ -37,7 +39,7 @@ class LLVMGenerator {
         register++;
 
         // Konwersja wyniku porównania na string ("true" lub "false")
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = select i1 %")
                 .append(register - 1)
@@ -45,7 +47,7 @@ class LLVMGenerator {
         register++;
 
         // Wywołanie printf z formatem %s
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @strpb, i32 0, i32 0), i8* %")
                 .append(register - 1)
@@ -54,7 +56,7 @@ class LLVMGenerator {
     }
 
     static void declare(String id, PrimitiveType type, boolean isGlobalContext) {
-        final var text = isGlobalContext ? HEADER_TEXT : MAIN_TEXT;
+        final var text = isGlobalContext ? HEADER_TEXT : CURRENT_TEXT;
         text.append(isGlobalContext ? "@" : "%")
                 .append(id)
                 .append(" = ")
@@ -66,7 +68,7 @@ class LLVMGenerator {
     }
 
     static void declare(Array array) {
-        final var text = array.isGlobal ? HEADER_TEXT : MAIN_TEXT;
+        final var text = array.isGlobal ? HEADER_TEXT : CURRENT_TEXT;
         text.append(array.name())
                 .append(" = ")
                 .append(array.isGlobal ? "global" : "alloca")
@@ -80,7 +82,7 @@ class LLVMGenerator {
     }
 
     static void declare(Matrix matrix) {
-        final var text = matrix.isGlobal ? HEADER_TEXT : MAIN_TEXT;
+        final var text = matrix.isGlobal ? HEADER_TEXT : CURRENT_TEXT;
         text.append(matrix.name())
                 .append(" = ")
                 .append(matrix.isGlobal ? "global" : "alloca")
@@ -96,7 +98,7 @@ class LLVMGenerator {
     }
 
     static void assign_array_item(Array array, String index, Value value) {
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = getelementptr inbounds [")
                 .append(array.length)
@@ -111,7 +113,7 @@ class LLVMGenerator {
                 .append(", i64 0, i64 ")
                 .append(index)
                 .append("\n");
-        MAIN_TEXT.append("store ")
+        CURRENT_TEXT.append("store ")
                 .append(value.type.llvmType())
                 .append(" ")
                 .append(value.name())
@@ -124,7 +126,7 @@ class LLVMGenerator {
     }
 
     static void assign_matrix_row(Matrix matrix, String index, Array value) {
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = getelementptr inbounds [")
                 .append(matrix.rows.size())
@@ -143,7 +145,7 @@ class LLVMGenerator {
                 .append(", i64 0, i64 ")
                 .append(index)
                 .append("\n");
-        MAIN_TEXT.append("store [")
+        CURRENT_TEXT.append("store [")
                 .append(matrix.rowLength)
                 .append(" x ")
                 .append(matrix.type.llvmType())
@@ -160,7 +162,7 @@ class LLVMGenerator {
     }
 
     static void assign_matrix_item(Matrix matrix, String rowIndex, String columnIndex, Value value) {
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = getelementptr inbounds [")
                 .append(matrix.rows.size())
@@ -180,7 +182,7 @@ class LLVMGenerator {
                 .append(rowIndex)
                 .append("\n");
         register++;
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = load [")
                 .append(matrix.rowLength)
@@ -194,7 +196,7 @@ class LLVMGenerator {
                 .append(register - 1)
                 .append("\n");
         register++;
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = getelementptr inbounds [")
                 .append(matrix.rowLength)
@@ -209,7 +211,7 @@ class LLVMGenerator {
                 .append(", i64 0, i64 ")
                 .append(columnIndex)
                 .append("\n");
-        MAIN_TEXT.append("store ")
+        CURRENT_TEXT.append("store ")
                 .append(value.type.llvmType())
                 .append(" ")
                 .append(value.name())
@@ -222,7 +224,7 @@ class LLVMGenerator {
     }
 
     static void assign(String id, boolean isGlobalContext, Value value) {
-        MAIN_TEXT.append("store ")
+        CURRENT_TEXT.append("store ")
                 .append(value.type.llvmType())
                 .append(" ")
                 .append(value.name())
@@ -235,7 +237,7 @@ class LLVMGenerator {
     }
 
     static Value load(String id, Value value, boolean isGlobalContext) {
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = load ")
                 .append(value.type.llvmType())
@@ -252,7 +254,7 @@ class LLVMGenerator {
     }
 
     static void load_array_value(Array array, String index) {
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = getelementptr inbounds [")
                 .append(array.length)
@@ -268,7 +270,7 @@ class LLVMGenerator {
                 .append(index)
                 .append("\n");
         register++;
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = load ")
                 .append(array.type.llvmType())
@@ -281,7 +283,7 @@ class LLVMGenerator {
     }
 
     static void load_matrix_value(Matrix matrix, String rowIndex, String columnIndex) {
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = getelementptr inbounds [")
                 .append(matrix.rows.size())
@@ -301,7 +303,7 @@ class LLVMGenerator {
                 .append(rowIndex)
                 .append("\n");
         register++;
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = load [")
                 .append(matrix.rowLength)
@@ -315,7 +317,7 @@ class LLVMGenerator {
                 .append(register - 1)
                 .append("\n");
         register++;
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = getelementptr inbounds [")
                 .append(matrix.rowLength)
@@ -331,7 +333,7 @@ class LLVMGenerator {
                 .append(columnIndex)
                 .append("\n");
         register++;
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = load ")
                 .append(matrix.type.llvmType())
@@ -353,7 +355,7 @@ class LLVMGenerator {
         register++;
 
         // Jeśli value1 jest fałszywe, skaczemy od razu do końca
-        MAIN_TEXT.append("br i1 ")
+        CURRENT_TEXT.append("br i1 ")
                 .append(value1.name())
                 .append(", label %")
                 .append(labelTrue)
@@ -362,28 +364,28 @@ class LLVMGenerator {
                 .append("\n");
 
         // Blok jeśli value1 == true sprawdzamy value2
-        MAIN_TEXT.append(labelTrue)
+        CURRENT_TEXT.append(labelTrue)
                 .append(":\n");
-        MAIN_TEXT.append(trueVal)
+        CURRENT_TEXT.append(trueVal)
                 .append(" = and i1 ")
                 .append(value1.name())
                 .append(", ")
                 .append(value2.name())
                 .append("\n");
-        MAIN_TEXT.append("br label %")
+        CURRENT_TEXT.append("br label %")
                 .append(labelEnd)
                 .append("\n");
 
         // jesli nie to zwracamy zero
-        MAIN_TEXT.append(labelNotTrue)
+        CURRENT_TEXT.append(labelNotTrue)
                 .append(":\n");
-        MAIN_TEXT.append(falseVal)
+        CURRENT_TEXT.append(falseVal)
                 .append(" = and i1 0, 0\n");
-        MAIN_TEXT.append("br label %")
+        CURRENT_TEXT.append("br label %")
                 .append(labelEnd)
                 .append("\n");
 
-        MAIN_TEXT.append(labelEnd)
+        CURRENT_TEXT.append(labelEnd)
                 .append(":\n")
                 .append(result)
                 .append(" = phi i1 [ ").append(trueVal).append(", %").append(labelTrue)
@@ -400,7 +402,7 @@ class LLVMGenerator {
         register++;
 
         // Jeśli value1 jest prawdziwe, skaczemy od labelTrue
-        MAIN_TEXT.append("br i1 ")
+        CURRENT_TEXT.append("br i1 ")
                 .append(value1.name())
                 .append(", label %")
                 .append(labelTrue)
@@ -409,9 +411,9 @@ class LLVMGenerator {
                 .append("\n");
 
         // Blok jeśli value1 == true zwracamy od razu prawda
-        MAIN_TEXT.append(labelTrue)
+        CURRENT_TEXT.append(labelTrue)
                 .append(":\n");
-        MAIN_TEXT.append(trueVal)
+        CURRENT_TEXT.append(trueVal)
                 .append(" = or i1 1, 1")
                 .append("\n")
                 .append("br label %")
@@ -419,9 +421,9 @@ class LLVMGenerator {
                 .append("\n");
 
         // Blok jesli value1 != true obliczamy or
-        MAIN_TEXT.append(labelNotTrue)
+        CURRENT_TEXT.append(labelNotTrue)
                 .append(":\n");
-        MAIN_TEXT.append(falseVal)
+        CURRENT_TEXT.append(falseVal)
                 .append(" = or i1 ").append(value1.name()).append(", ").append(value2.name())
                 .append("\n")
                 .append("br label %")
@@ -429,7 +431,7 @@ class LLVMGenerator {
                 .append("\n");
 
         // Blok końcowy
-        MAIN_TEXT.append(labelEnd)
+        CURRENT_TEXT.append(labelEnd)
                 .append(":\n")
                 .append(result)
                 .append(" = phi i1 [ ").append(trueVal).append(", %").append(labelTrue)
@@ -437,7 +439,7 @@ class LLVMGenerator {
     }
 
     static void xor(Value value1, Value value2) {
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = xor i1 ")
                 .append(value1.name())
@@ -448,7 +450,7 @@ class LLVMGenerator {
     }
 
     static void neg(Value value) {
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = xor i1 ")
                 .append(value.name())
@@ -457,7 +459,7 @@ class LLVMGenerator {
     }
 
     static Value add(Value value1, Value value2) {
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = ")
                 .append(isFloatingPoint(value1) ? "f" : "")
@@ -473,7 +475,7 @@ class LLVMGenerator {
     }
 
     static Value sub(Value value1, Value value2) {
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = ")
                 .append(isFloatingPoint(value1) ? "f" : "")
@@ -489,7 +491,7 @@ class LLVMGenerator {
     }
 
     static Value mult(Value value1, Value value2) {
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = ")
                 .append(isFloatingPoint(value1) ? "f" : "")
@@ -505,7 +507,7 @@ class LLVMGenerator {
     }
 
     static Value div(Value value1, Value value2) {
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = ")
                 .append(isFloatingPoint(value1) ? "f" : "s")
@@ -525,7 +527,7 @@ class LLVMGenerator {
     }
 
     static void ext(Value value) {
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = ")
                 .append(isFloatingPoint(value) ? "fpext" : "sext")
@@ -540,7 +542,7 @@ class LLVMGenerator {
     }
 
     static void trunc(Value value) {
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = ")
                 .append(isFloatingPoint(value) ? "fptrunc" : "trunc")
@@ -555,7 +557,7 @@ class LLVMGenerator {
     }
 
     static void sitofp(Value value, PrimitiveType targetType) {
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = sitofp ")
                 .append(value.type.llvmType())
@@ -568,7 +570,7 @@ class LLVMGenerator {
     }
 
     static void fptosi(Value value, PrimitiveType targetType) {
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = fptosi ")
                 .append(value.type.llvmType())
@@ -581,7 +583,7 @@ class LLVMGenerator {
     }
 
     static void allocate_string(String id, int length) {
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(id)
                 .append(" = alloca [")
                 .append(length + 1)
@@ -599,14 +601,14 @@ class LLVMGenerator {
                 .append("\\00\"\n");
         final var id = "str" + str;
         allocate_string(id, (length - 1));
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = bitcast [")
                 .append(length)
                 .append(" x i8]* %")
                 .append(id)
                 .append(" to i8*\n");
-        MAIN_TEXT.append("call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %")
+        CURRENT_TEXT.append("call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %")
                 .append(register)
                 .append(", i8* align 1 getelementptr inbounds ([")
                 .append(length)
@@ -624,7 +626,7 @@ class LLVMGenerator {
     static void scanf(Value value) {
         allocate_string("str" + str, value.length);
         declare(value.name, value.type, value.isGlobal);
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = getelementptr inbounds [")
                 .append(value.length + 1)
@@ -634,18 +636,69 @@ class LLVMGenerator {
                 .append(str)
                 .append(", i64 0, i64 0\n");
         register++;
-        MAIN_TEXT.append("store i8* %")
+        CURRENT_TEXT.append("store i8* %")
                 .append(register - 1)
                 .append(", i8** ")
                 .append(value.name())
                 .append("\n");
         str++;
-        MAIN_TEXT.append("%")
+        CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = call i32 (i8*, ...) @scanf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @strs, i32 0, i32 0), i8* %")
                 .append(register - 1)
                 .append(")\n");
         register++;
+    }
+
+    static void ret(Value value) {
+        CURRENT_TEXT.append("ret ")
+                .append(value.type.llvmType())
+                .append(" ")
+                .append(value.name())
+                .append("\n");
+    }
+
+    static void defineFunction(Function function) {
+        CURRENT_TEXT.append("define ")
+                .append(function.returnType.llvmType())
+                .append(" @")
+                .append(function.name)
+                .append("(");
+
+        for (var i = 0; i < function.parameters.size(); i++) {
+            final var param = function.parameters.get(i);
+
+            CURRENT_TEXT.append(param.type.llvmType())
+                    .append(" %")
+                    .append(param.name);
+
+            if (i != function.parameters.size() - 1) {
+                CURRENT_TEXT.append(", ");
+            }
+        }
+
+        CURRENT_TEXT.append(") {\n");
+    }
+
+    static void closeFunction(Function function) {
+        if (function.returnType == PrimitiveType.VOID) {
+            CURRENT_TEXT.append("ret void\n");
+        }
+
+        CURRENT_TEXT.append("}\n");
+    }
+
+    static void commit() {
+        HEADER_TEXT.append(BUFFER_TEXT);
+        BUFFER_TEXT.setLength(0);
+    }
+
+    static void setMainContext(boolean isMainContext) {
+        if (isMainContext) {
+            CURRENT_TEXT = MAIN_TEXT;
+        } else {
+            CURRENT_TEXT = BUFFER_TEXT;
+        }
     }
 
     static String generate() {
