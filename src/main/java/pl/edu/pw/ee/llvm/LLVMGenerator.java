@@ -621,23 +621,23 @@ class LLVMGenerator {
         str++;
     }
 
-    static void scanf(String id, int length) {
-        allocate_string("str" + str, length);
-        MAIN_TEXT.append("%").append(id).append(" = alloca i8*\n");
+    static void scanf(Value value) {
+        allocate_string("str" + str, value.length);
+        declare(value.name, value.type, value.isGlobal);
         MAIN_TEXT.append("%")
                 .append(register)
                 .append(" = getelementptr inbounds [")
-                .append(length + 1)
+                .append(value.length + 1)
                 .append(" x i8], [")
-                .append(length + 1)
+                .append(value.length + 1)
                 .append(" x i8]* %str")
                 .append(str)
                 .append(", i64 0, i64 0\n");
         register++;
         MAIN_TEXT.append("store i8* %")
                 .append(register - 1)
-                .append(", i8** %")
-                .append(id)
+                .append(", i8** ")
+                .append(value.name())
                 .append("\n");
         str++;
         MAIN_TEXT.append("%")

@@ -24,5 +24,8 @@ o = 1i;
 p = (m / n) + (double)o;
 print p;
 
-str = "Hello, World!";
-print str;
+hello = "Hello, World!";
+print hello;
+
+read fromUser;
+print fromUser;
