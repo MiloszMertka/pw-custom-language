@@ -1,17 +1,12 @@
 #include<stdio.h>
 
-int a = 10;
+int test(int n) {
+    printf("Hello, World! %d\n", n);
+    return 0;
+}
 
 int main() {
-    a = 20;
-
-    {
-        a = 30;
-        {
-            a = 40;
-            printf("%d\n", a); // 40
-        }
-    }
-
+    int a = test(5);
+    printf("%d\n", a);
     return 0;
 }
