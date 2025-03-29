@@ -1,8 +1,10 @@
 package pl.edu.pw.ee.llvm;
 
-public class Parameter {
+public class Parameter extends Value {
 
-    public String name;
-    public PrimitiveType type;
+    public Parameter(String name, PrimitiveType type) {
+        super(name, type);
+        isGlobal = false;
+    }
 
 }

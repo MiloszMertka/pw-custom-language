@@ -9,4 +9,9 @@ public class Function {
     public PrimitiveType returnType;
     public List<Parameter> parameters = new LinkedList<>();
 
+    public Function(String name, PrimitiveType returnType) {
+        this.name = name;
+        this.returnType = returnType;
+    }
+
 }

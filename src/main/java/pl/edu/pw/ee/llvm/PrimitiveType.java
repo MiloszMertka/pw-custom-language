@@ -20,6 +20,16 @@ public enum PrimitiveType {
         this.llvmZeroValue = llvmZeroValue;
     }
 
+    public static PrimitiveType fromKeyword(String keyword) {
+        for (final var type : PrimitiveType.values()) {
+            if (type.name().equalsIgnoreCase(keyword)) {
+                return type;
+            }
+        }
+        
+        return UNKNOWN;
+    }
+
     public String llvmType() {
         return llvmType;
     }

@@ -34,3 +34,15 @@ hello = "Hello, World!";
 print hello;
 read fromUser;
 print fromUser;
+
+/* Function support */
+fun int add(int a, int b) {
+    return a + b;
+}
+result = add(5i, 10i);
+print result;
+
+fun void sayhello() {
+    print hello;
+}
+sayhello();
