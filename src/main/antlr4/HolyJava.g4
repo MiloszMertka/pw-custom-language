@@ -16,9 +16,15 @@ statement:    ID '[' expr0 ']' '[' expr0 ']' '=' expr0	    #assignmatrix
             | READ ID		                                #read
             | RETURN expr0                                  #return
             | functioncall                                  #voidfuncall
-            | WHILE '(' expr0 ')' block                     #whileloop
+            | WHILE '(' condition ')' whilebody             #while
             | IF '(' expr0 ')' block (ELSE block)?          #ifelse
             ;
+
+whilebody: block #whiledef
+    ;
+
+condition: expr0 #loopcond
+    ;
 
 function: funheader block #fundef
     ;

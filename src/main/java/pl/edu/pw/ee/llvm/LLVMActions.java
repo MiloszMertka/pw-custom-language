@@ -19,6 +19,7 @@ class LLVMActions extends HolyJavaBaseListener {
     private final Stack<Value> stack = new Stack<>();
     private final Stack<Array> arrayStack = new Stack<>();
     private final Stack<Matrix> matrixStack = new Stack<>();
+    private final Stack<String> localLoopStack = new Stack<>();
     private Function currentFunction;
     private boolean isGlobalContext = true;
 
@@ -292,6 +293,33 @@ class LLVMActions extends HolyJavaBaseListener {
         if (array.type != value.type) {
             error(context.getStart().getLine(), "array type mismatch");
         }
+    }
+
+    @Override
+    public void exitLoopcond(HolyJavaParser.LoopcondContext context) {
+        var id = context.getText();
+        localLoopStack.push(id);
+    }
+
+    @Override
+    public void enterWhiledef(HolyJavaParser.WhiledefContext context) {
+        var val = localLoopStack.pop();
+        localLoopStack.push(val);
+        var condition = stack.pop();
+        if(condition.type != PrimitiveType.BOOLEAN) {
+            error(context.getStart().getLine(), "Boolean type condition mismatch");
+        }
+        LLVMGenerator.write_loop_start_label();
+        LLVMGenerator.evaluate_loop_condition(condition.name);
+
+    }
+
+    @Override
+    public void exitWhiledef(HolyJavaParser.WhiledefContext context) {
+        String id = localLoopStack.pop();
+        LLVMGenerator.load(id, new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.BOOLEAN), true);
+        LLVMGenerator.evaluate_loop();
+        LLVMGenerator.write_loop_end_label(); // End of the loop
     }
 
     @Override

@@ -74,3 +74,34 @@ fun void sayhello() {
     print hello;
 }
 sayhello();
+tt = true;
+mm = 2;
+/* While test */
+/* expeted
+2
+5
+5
+4
+4
+4 */
+while(tt) {
+    op = 1;
+    tt = op > mm;
+    print mm;
+    fgh = 7;
+    fdg = 5;
+    co = fgh > fdg;
+    while(co) {
+        print fdg;
+        fgh = fgh - 1;
+        co = fgh > fdg;
+    };
+};
+fguu = 7;
+fduu = 4;
+cb = fguu > fduu;
+    while(cb) {
+        print fduu;
+        fguu = fguu - 1;
+        cb = fguu > fduu;
+    };
