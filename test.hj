@@ -105,3 +105,20 @@ cb = fguu > fduu;
         fguu = fguu - 1;
         cb = fguu > fduu;
     };
+rt = 4;
+vb = 8;
+poi = vb < rt;
+if (poi) {
+    sayhello();
+};
+rty = 8;
+asd = true;
+if(asd) {
+    zxc = 8;
+    mnb = zxc == rty;
+    if (mnb) {
+        print rty;
+    };
+};
+
+
