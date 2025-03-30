@@ -120,5 +120,22 @@ if(asd) {
         print rty;
     };
 };
+bvc = 4;
+dxz = bvc == rty;
+if(dxz) {
+    sayhello();
+} else {
+    hgj = 5.6;
+    print hgj;
+};
+
+asx = !dxz;
+
+if(asx) {
+    sayhello();
+} else {
+    hgj = 2.3;
+    print hgj;
+};
 
 

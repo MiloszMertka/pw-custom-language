@@ -297,6 +297,20 @@ class LLVMActions extends HolyJavaBaseListener {
     }
 
     @Override
+    public void enterElsedef(HolyJavaParser.ElsedefContext context) {
+        var id = localIfStack.pop();
+        LLVMGenerator.load(id, new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.BOOLEAN), true);
+        LLVMGenerator.write_else_start();
+        LLVMGenerator.evaluate_else();
+    }
+
+    @Override
+    public void exitElsedef(HolyJavaParser.ElsedefContext context) {
+        LLVMGenerator.jump_to_else_end();
+        LLVMGenerator.write_else_end_label();
+    }
+
+    @Override
     public void exitIfcond(HolyJavaParser.IfcondContext context) {
         var id = context.getText();
         localIfStack.push(id);
@@ -317,9 +331,8 @@ class LLVMActions extends HolyJavaBaseListener {
 
     @Override
     public void exitIfdef(HolyJavaParser.IfdefContext context) {
-        localIfStack.pop();
         LLVMGenerator.jump_to_if_end();
-        LLVMGenerator.write_if_end_label(); // End of the loop
+        LLVMGenerator.write_if_end_label();
     }
 
     @Override

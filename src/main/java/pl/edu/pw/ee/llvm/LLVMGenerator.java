@@ -353,6 +353,43 @@ class LLVMGenerator {
         register++;
     }
 
+    static void jump_to_else_end() {
+        final var endLabel = "else_end_" + cur_ifs;
+        CURRENT_TEXT.append("br label %")
+                .append(endLabel)
+                .append("\n");
+    }
+
+    static void write_else_end_label() {
+        final var endLabel = "else_end_" + cur_ifs;
+        CURRENT_TEXT.append(endLabel)
+                .append(": \n");
+    }
+
+    static void write_else_start() {
+        var number = cur_ifs;
+        final var startLabel = "else_start_" + number;
+        CURRENT_TEXT.append("br label %")
+                .append(startLabel)
+                .append("\n");
+        CURRENT_TEXT.append(startLabel)
+                .append(": \n");
+    }
+
+    static void evaluate_else() {
+        final var body_label = "else_body_" + cur_ifs;
+        final var end_label = "else_end_" + cur_ifs;
+        CURRENT_TEXT.append("br i1 %")
+                .append(register - 1)
+                .append(", label %")
+                .append(end_label)
+                .append(", label %")
+                .append(body_label)
+                .append("\n");
+        CURRENT_TEXT.append(body_label)
+                .append(": \n");
+    }
+
     static void write_if_start_label() {
         ifs++;
         cur_ifs++;
