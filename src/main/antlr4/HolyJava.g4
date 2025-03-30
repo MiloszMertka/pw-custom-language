@@ -16,7 +16,15 @@ statement:    ID '[' expr0 ']' '[' expr0 ']' '=' expr0	    #assignmatrix
             | READ ID		                                #read
             | RETURN expr0                                  #return
             | functioncall                                  #voidfuncall
+            | WHILE '(' condition ')' whilebody             #while
+            | IF '(' expr0 ')' block (ELSE block)?          #ifelse
             ;
+
+whilebody: block #whiledef
+    ;
+
+condition: expr0 #loopcond
+    ;
 
 function: funheader block #fundef
     ;
@@ -45,8 +53,15 @@ arr: '[' arritem (',' arritem)* ']' #arraydef
 arritem: expr0 #arrayitem
     ;
 
-expr0:    expr1			        #single0
-        | expr0 OR expr1	    #or
+expr0:    exprComp                   #single0
+        | expr0 OR exprComp          #or
+        ;
+
+exprComp: expr1                      #singleComp
+        | expr1 LT expr1             #less
+        | expr1 GT expr1             #greater
+        | expr1 EQ expr1             #equal
+        | expr1 NEQ expr1            #notequal
         ;
 
 expr1:    expr2			        #single1
@@ -108,6 +123,15 @@ READ: 'read'
     ;
 
 PRINT: 'print'
+    ;
+
+WHILE: 'while'
+    ;
+
+IF: 'if'
+    ;
+
+ELSE: 'else'
     ;
 
 TOINT: '(int)'
@@ -183,6 +207,18 @@ XOR: '^'
     ;
 
 NEG: '!'
+    ;
+
+LT: '<'
+    ;
+
+GT: '>'
+    ;
+
+EQ: '=='
+    ;
+
+NEQ: '!='
     ;
 
 SEMICOLON: ';'

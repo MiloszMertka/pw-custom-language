@@ -28,6 +28,34 @@ o = 1i;
 p = (m / n) + (double)o;
 print p;
 
+/* Negation */
+lk = false;
+lu = !lk;
+print lu;
+
+/* Equal */
+ee = "str";
+ff = "strf";
+gg = ee == ff;
+print gg;
+
+/* not Equal */
+de = 3.0;
+df = 2.0;
+dg = ee != ff;
+print gg;
+
+/* Less */
+le = 2;
+lf = 3;
+lg = le < lf;
+print lg;
+
+/* Greater */
+ge = 2.0;
+gf = 3.0;
+ggg = ge > gf;
+print ggg;
 
 /* String support */
 hello = "Hello, World!";
@@ -46,3 +74,34 @@ fun void sayhello() {
     print hello;
 }
 sayhello();
+tt = true;
+mm = 2;
+/* While test */
+/* expeted
+2
+5
+5
+4
+4
+4 */
+while(tt) {
+    op = 1;
+    tt = op > mm;
+    print mm;
+    fgh = 7;
+    fdg = 5;
+    co = fgh > fdg;
+    while(co) {
+        print fdg;
+        fgh = fgh - 1;
+        co = fgh > fdg;
+    };
+};
+fguu = 7;
+fduu = 4;
+cb = fguu > fduu;
+    while(cb) {
+        print fduu;
+        fguu = fguu - 1;
+        cb = fguu > fduu;
+    };

@@ -11,6 +11,9 @@ class LLVMGenerator {
     static int str = 1;
     static int arr = 1;
     static int mat = 1;
+    static int loops = 0;
+    static int cur_loops = 0;
+    static int loop_index = 0;
     private static StringBuilder CURRENT_TEXT = MAIN_TEXT;
 
     static void printf(Value value) {
@@ -347,6 +350,55 @@ class LLVMGenerator {
         register++;
     }
 
+    static void write_loop_start_label() {
+        loops++;
+        cur_loops++;
+        final var startLabel = "loop_start_" + cur_loops;
+        CURRENT_TEXT.append("br label %")
+                .append(startLabel)
+                .append("\n");
+        CURRENT_TEXT.append(startLabel)
+                .append(": \n");
+    }
+
+    static void evaluate_loop() {
+        final var body_label = "loop_body_" + cur_loops;
+        final var end_label = "loop_end_" + cur_loops;
+        CURRENT_TEXT.append("br i1 %")
+                .append(register - 1)
+                .append(", label %")
+                .append(body_label)
+                .append(", label %")
+                .append(end_label)
+                .append("\n");
+    }
+
+    static void evaluate_loop_condition(String id) {
+        final var body_label = "loop_body_" + cur_loops;
+        final var end_label = "loop_end_" + cur_loops;
+        CURRENT_TEXT.append("br i1 %")
+                .append(id)
+                .append(", label %")
+                .append(body_label)
+                .append(", label %")
+                .append(end_label)
+                .append("\n");
+        CURRENT_TEXT.append(body_label)
+                .append(": \n");
+    }
+
+    static void write_loop_end_label() {
+        final var endLabel = "loop_end_" + cur_loops;
+        CURRENT_TEXT.append(endLabel)
+                .append(": \n");
+        cur_loops--;
+        if (cur_loops == loop_index) {
+            loop_index = loops;
+            cur_loops = loops;
+        }
+        register++;
+    }
+
     static void and(Value value1, Value value2) {
         final var labelTrue = "and_true_" + register;
         final var labelNotTrue = "and_not_true_" + register;
@@ -457,6 +509,147 @@ class LLVMGenerator {
                 .append(" = xor i1 ")
                 .append(value.name())
                 .append(", 1\n");  // NOT = XOR z 1
+        register++;
+    }
+
+    static void equal_i(Value value1, Value value2) {
+        CURRENT_TEXT.append("%")
+                .append(register)
+                .append(" = ")
+                .append(value1.type.llvmComparator())
+                .append(" eq ")
+                .append(value2.type.llvmType())
+                .append(" ")
+                .append(value1.name())
+                .append(", ")
+                .append(value2.name())
+                .append("\n");
+        register++;
+    }
+
+    static void equal_f(Value value1, Value value2) {
+        CURRENT_TEXT.append("%")
+                .append(register)
+                .append(" = ")
+                .append(value1.type.llvmComparator())
+                .append(" oeq ")
+                .append(value2.type.llvmType())
+                .append(" ")
+                .append(value1.name())
+                .append(", ")
+                .append(value2.name())
+                .append("\n");
+        register++;
+    }
+
+    static void equal_s(Value value1, Value value2) {
+        final var result = "%result_" + register;
+        CURRENT_TEXT.append(result)
+                .append(" = call i32 @strcmp(")
+                .append(value1.type.llvmType())
+                .append(" ")
+                .append(value1.name())
+                .append(", ")
+                .append(value2.type.llvmType())
+                .append(" ")
+                .append(value2.name())
+                .append(")\n");
+
+        CURRENT_TEXT.append("%")
+                .append(register)
+                .append(" = icmp eq i32 ")
+                .append(result)
+                .append(", 0\n");
+        register++;
+    }
+
+    static void not_equal_i(Value value1, Value value2) {
+        equal_i(value1, value2);
+        CURRENT_TEXT.append("%")
+                .append(register)
+                .append("xor i1 %")
+                .append(register - 1)
+                .append(", 1\n");
+        register++;
+    }
+
+    static void not_equal_f(Value value1, Value value2) {
+        equal_f(value1, value2);
+        CURRENT_TEXT.append("%")
+                .append(register)
+                .append("xor i1 %")
+                .append(register - 1)
+                .append(", 1\n");
+        register++;
+    }
+
+    static void not_equal_s(Value value1, Value value2) {
+        equal_s(value1, value2);
+        CURRENT_TEXT.append("%")
+            .append(register)
+            .append(" = xor i1 %")
+            .append(register - 1)
+            .append(", 1\n");
+        register++;
+    }
+
+    static void less_i(Value value1, Value value2) {
+        CURRENT_TEXT.append("%")
+                .append(register)
+                .append(" = ")
+                .append(value1.type.llvmComparator())
+                .append(" ult ")
+                .append(value2.type.llvmType())
+                .append(" ")
+                .append(value2.name())
+                .append(", ")
+                .append(value1.name())
+                .append("\n");
+        register++;
+    }
+
+    static void less_f(Value value1, Value value2) {
+        CURRENT_TEXT.append("%")
+                .append(register)
+                .append(" = ")
+                .append(value1.type.llvmComparator())
+                .append(" olt ")
+                .append(value2.type.llvmType())
+                .append(" ")
+                .append(value2.name())
+                .append(", ")
+                .append(value1.name())
+                .append("\n");
+        register++;
+    }
+
+    static void greater_i(Value value1, Value value2) {
+        CURRENT_TEXT.append("%")
+                .append(register)
+                .append(" = ")
+                .append(value1.type.llvmComparator())
+                .append(" ugt ")
+                .append(value2.type.llvmType())
+                .append(" ")
+                .append(value2.name())
+                .append(", ")
+                .append(value1.name())
+                .append("\n");
+        register++;
+    }
+
+    static void greater_f(Value value1, Value value2) {
+        CURRENT_TEXT.append("%")
+                .append(register)
+                .append(" = ")
+                .append(value1.type.llvmComparator())
+                .append(" ogt ")
+                .append(value2.type.llvmType())
+                .append(" ")
+                .append(value2.name())
+                .append(", ")
+                .append(value1.name())
+                .append("\n");
         register++;
     }
 
@@ -738,6 +931,7 @@ class LLVMGenerator {
                 "declare i8* @strcpy(i8*, i8*)\n" +
                 "declare i8* @strcat(i8*, i8*)\n" +
                 "declare i32 @scanf(i8*, ...)\n" +
+                "declare i32 @strcmp(i8*, i8*)\n" +
                 "declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg)\n" +
                 "@strps = constant [4 x i8] c\"%s\\0A\\00\"\n" +
                 "@strpi = constant [4 x i8] c\"%d\\0A\\00\"\n" +
