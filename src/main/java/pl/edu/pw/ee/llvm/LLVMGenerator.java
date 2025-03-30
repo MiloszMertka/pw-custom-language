@@ -14,6 +14,9 @@ class LLVMGenerator {
     static int loops = 0;
     static int cur_loops = 0;
     static int loop_index = 0;
+    static int ifs = 0;
+    static int cur_ifs = 0;
+    static int if_index = 0;
     private static StringBuilder CURRENT_TEXT = MAIN_TEXT;
 
     static void printf(Value value) {
@@ -347,6 +350,87 @@ class LLVMGenerator {
                 .append("* %")
                 .append(register - 1)
                 .append("\n");
+        register++;
+    }
+
+    static void jump_to_else_end() {
+        final var endLabel = "else_end_" + cur_ifs;
+        CURRENT_TEXT.append("br label %")
+                .append(endLabel)
+                .append("\n");
+    }
+
+    static void write_else_end_label() {
+        final var endLabel = "else_end_" + cur_ifs;
+        CURRENT_TEXT.append(endLabel)
+                .append(": \n");
+    }
+
+    static void write_else_start() {
+        var number = cur_ifs;
+        final var startLabel = "else_start_" + number;
+        CURRENT_TEXT.append("br label %")
+                .append(startLabel)
+                .append("\n");
+        CURRENT_TEXT.append(startLabel)
+                .append(": \n");
+    }
+
+    static void evaluate_else() {
+        final var body_label = "else_body_" + cur_ifs;
+        final var end_label = "else_end_" + cur_ifs;
+        CURRENT_TEXT.append("br i1 %")
+                .append(register - 1)
+                .append(", label %")
+                .append(end_label)
+                .append(", label %")
+                .append(body_label)
+                .append("\n");
+        CURRENT_TEXT.append(body_label)
+                .append(": \n");
+    }
+
+    static void write_if_start_label() {
+        ifs++;
+        cur_ifs++;
+        final var startLabel = "if_start_" + cur_ifs;
+        CURRENT_TEXT.append("br label %")
+            .append(startLabel)
+            .append("\n");
+        CURRENT_TEXT.append(startLabel)
+                .append(": \n");
+    }
+
+    static void evaluate_if_condition(String id) {
+        final var body_label = "if_body_" + cur_ifs;
+        final var end_label = "if_end_" + cur_ifs;
+        CURRENT_TEXT.append("br i1 %")
+                .append(id)
+                .append(", label %")
+                .append(body_label)
+                .append(", label %")
+                .append(end_label)
+                .append("\n");
+        CURRENT_TEXT.append(body_label)
+                .append(": \n");
+    }
+
+    static void jump_to_if_end() {
+        final var endLabel = "if_end_" + cur_ifs;
+        CURRENT_TEXT.append("br label %")
+                .append(endLabel)
+                .append("\n");
+    }
+
+    static void write_if_end_label() {
+        final var endLabel = "if_end_" + cur_ifs;
+        CURRENT_TEXT.append(endLabel)
+                .append(": \n");
+        cur_ifs--;
+        if (cur_ifs == if_index) {
+            if_index = ifs;
+            cur_ifs = ifs;
+        }
         register++;
     }
 

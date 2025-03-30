@@ -7,23 +7,32 @@ package pl.edu.pw.ee;
 programme: (COMMENT|function|(statement? SEMICOLON))*
     ;
 
-statement:    ID '[' expr0 ']' '[' expr0 ']' '=' expr0	    #assignmatrix
-            | ID '[' expr0 ']' '=' expr0	                #assignarray
-            | ID '=' expr0		                            #assign
-            | ID '=' '[' matitem+ ']'                       #matrix
-            | ID '=' arr                                    #array
-            | PRINT ID   		                            #print
-            | READ ID		                                #read
-            | RETURN expr0                                  #return
-            | functioncall                                  #voidfuncall
-            | WHILE '(' condition ')' whilebody             #while
-            | IF '(' expr0 ')' block (ELSE block)?          #ifelse
+statement:    ID '[' expr0 ']' '[' expr0 ']' '=' expr0	        #assignmatrix
+            | ID '[' expr0 ']' '=' expr0	                    #assignarray
+            | ID '=' expr0		                                #assign
+            | ID '=' '[' matitem+ ']'                           #matrix
+            | ID '=' arr                                        #array
+            | PRINT ID   		                                #print
+            | READ ID		                                    #read
+            | RETURN expr0                                      #return
+            | functioncall                                      #voidfuncall
+            | WHILE '(' loopcondition ')' whilebody             #while
+            | IF '(' ifcondition ')' ifbody (ELSE elsebody)?    #ifelse
             ;
 
 whilebody: block #whiledef
     ;
 
-condition: expr0 #loopcond
+ifbody: block #ifdef
+    ;
+
+elsebody: block #elsedef
+    ;
+
+ifcondition: expr0 #ifcond
+    ;
+
+loopcondition: expr0 #loopcond
     ;
 
 function: funheader block #fundef

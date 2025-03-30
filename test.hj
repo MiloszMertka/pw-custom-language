@@ -105,3 +105,37 @@ cb = fguu > fduu;
         fguu = fguu - 1;
         cb = fguu > fduu;
     };
+rt = 4;
+vb = 8;
+poi = vb < rt;
+if (poi) {
+    sayhello();
+};
+rty = 8;
+asd = true;
+if(asd) {
+    zxc = 8;
+    mnb = zxc == rty;
+    if (mnb) {
+        print rty;
+    };
+};
+bvc = 4;
+dxz = bvc == rty;
+if(dxz) {
+    sayhello();
+} else {
+    hgj = 5.6;
+    print hgj;
+};
+
+asx = !dxz;
+
+if(asx) {
+    sayhello();
+} else {
+    hgj = 2.3;
+    print hgj;
+};
+
+
