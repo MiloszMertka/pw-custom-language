@@ -5,18 +5,18 @@ public class Value {
     private static final String GLOBAL_PREFIX = "@";
     private static final String LOCAL_PREFIX = "%";
     protected final String name;
-    public PrimitiveType type;
+    public Type type;
     public int length;
     public boolean isGlobal;
 
-    public Value(String name, PrimitiveType type, int length, boolean isGlobal) {
+    public Value(String name, Type type, int length, boolean isGlobal) {
         this.name = name;
         this.type = type;
         this.length = length;
         this.isGlobal = isGlobal;
     }
 
-    public Value(String name, PrimitiveType type) {
+    public Value(String name, Type type) {
         this.name = name;
         this.type = type;
         this.length = 0;

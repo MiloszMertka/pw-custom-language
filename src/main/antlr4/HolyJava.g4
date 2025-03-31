@@ -4,7 +4,7 @@ grammar HolyJava;
 package pl.edu.pw.ee;
 }
 
-programme: (COMMENT|function|(statement? SEMICOLON))*
+programme: (COMMENT|class|function|(statement? SEMICOLON))*
     ;
 
 statement:    ID '[' expr0 ']' '[' expr0 ']' '=' expr0	        #assignmatrix
@@ -16,8 +16,11 @@ statement:    ID '[' expr0 ']' '[' expr0 ']' '=' expr0	        #assignmatrix
             | READ ID		                                    #read
             | RETURN expr0                                      #return
             | functioncall                                      #voidfuncall
+            | classmethodcall                                   #voidmethodcall
             | WHILE '(' loopcondition ')' whilebody             #while
             | IF '(' ifcondition ')' ifbody (ELSE elsebody)?    #ifelse
+            | ID '.' ID '=' expr0                               #assignfield
+            | ID '=' NEW ID                                     #newobject
             ;
 
 whilebody: block #whiledef
@@ -35,6 +38,15 @@ ifcondition: expr0 #ifcond
 loopcondition: expr0 #loopcond
     ;
 
+class: CLASS ID '{' (COMMENT|method|field)* '}' #classdef
+    ;
+
+method: function #methoddef
+    ;
+
+field: type ID SEMICOLON #fielddef
+    ;
+
 function: funheader block #fundef
     ;
 
@@ -47,7 +59,10 @@ params: '(' (param (',' param)*)? ')' #funparams
 param: type ID #paramdef
     ;
 
-block: '{' (statement? SEMICOLON)* '}' #statementblock
+block: '{' (COMMENT|(statement? SEMICOLON))* '}' #statementblock
+    ;
+
+classmethodcall: ID '.' ID '(' (expr0 (',' expr0)*)? ')' #methodcall
     ;
 
 functioncall: ID '(' (expr0 (',' expr0)*)? ')' #funcall
@@ -99,6 +114,8 @@ expr5:    value             #val
         | TODOUBLE expr2	#todouble
         | '(' expr0 ')'		#par
         | functioncall      #nonvoidfuncall
+        | classmethodcall   #nonvoidmethodcall
+        | ID '.' ID         #readfield
         ;
 
 value:    ID '[' expr0 ']' '[' expr0 ']' #matrixvalue
@@ -120,6 +137,12 @@ type:     INTTYPE
         ;
 
 COMMENT: '/*' .*? '*/' -> channel(HIDDEN)
+    ;
+
+NEW: 'new'
+    ;
+
+CLASS: 'class'
     ;
 
 FUN: 'fun'
