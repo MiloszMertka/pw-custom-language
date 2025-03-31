@@ -16,12 +16,14 @@ class LLVMActions extends HolyJavaBaseListener {
     private final Map<String, Value> globalVariables = new HashMap<>();
     private final Map<String, Value> localVariables = new HashMap<>();
     private final Map<String, Function> functions = new HashMap<>();
+    private final Map<String, Clazz> classes = new HashMap<>();
     private final Stack<Value> stack = new Stack<>();
     private final Stack<Array> arrayStack = new Stack<>();
     private final Stack<Matrix> matrixStack = new Stack<>();
     private final Stack<String> localLoopStack = new Stack<>();
     private final Stack<String> localIfStack = new Stack<>();
     private Function currentFunction;
+    private Clazz currentClass;
     private boolean isGlobalContext = true;
 
     @Override
@@ -196,6 +198,143 @@ class LLVMActions extends HolyJavaBaseListener {
     }
 
     @Override
+    public void exitAssignfield(HolyJavaParser.AssignfieldContext context) {
+        final var objectID = context.ID().getFirst().getText();
+        final var fieldID = context.ID().getLast().getText();
+        final var object = getVariable(objectID, context);
+
+        final var clazz = classes.get(((CustomType) object.type).name);
+
+        final var value = stack.pop();
+
+        var field = clazz.getFieldOffsetNumber(fieldID);
+
+        if (field == -1) {
+            error(context.getStart().getLine(), "unknown field " + fieldID);
+        }
+
+        var fieldType = clazz.fields.get(fieldID).type;
+
+        if (value.type != fieldType) {
+            error(context.getStart().getLine(), "field type mismatch");
+        }
+
+        LLVMGenerator.assignField(clazz, field, objectID, value);
+    }
+
+    @Override
+    public void exitNewobject(HolyJavaParser.NewobjectContext context) {
+        final var id = context.ID().getFirst().getText();
+        final var classId = context.ID().getLast().getText();
+        final var clazz = classes.get(classId);
+
+        if (clazz == null) {
+            error(context.getStart().getLine(), "unknown class " + classId);
+        }
+
+        LLVMGenerator.newObject(id, clazz);
+        setVariable(id, new Value(id, new CustomType(classId), 0, false));
+    }
+
+    @Override
+    public void enterWhiledef(HolyJavaParser.WhiledefContext context) {
+        var val = localLoopStack.pop();
+        localLoopStack.push(val);
+        var condition = stack.pop();
+        if (condition.type != PrimitiveType.BOOLEAN) {
+            error(context.getStart().getLine(), "Boolean type condition mismatch");
+        }
+        LLVMGenerator.write_loop_start_label();
+        LLVMGenerator.evaluate_loop_condition(condition.name);
+
+    }
+
+    @Override
+    public void exitWhiledef(HolyJavaParser.WhiledefContext context) {
+        String id = localLoopStack.pop();
+        LLVMGenerator.load(id, new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.BOOLEAN), true);
+        LLVMGenerator.evaluate_loop();
+        LLVMGenerator.write_loop_end_label(); // End of the loop
+    }
+
+    @Override
+    public void enterIfdef(HolyJavaParser.IfdefContext context) {
+        var value = localIfStack.pop();
+        localIfStack.push(value);
+        var condition = stack.pop();
+
+        if (condition.type != PrimitiveType.BOOLEAN) {
+            error(context.getStart().getLine(), "Boolean type condition mismatch");
+        }
+        LLVMGenerator.write_if_start_label();
+        LLVMGenerator.evaluate_if_condition(condition.name);
+    }
+
+    @Override
+    public void exitIfdef(HolyJavaParser.IfdefContext context) {
+        LLVMGenerator.jump_to_if_end();
+        LLVMGenerator.write_if_end_label();
+    }
+
+    @Override
+    public void enterElsedef(HolyJavaParser.ElsedefContext context) {
+        var id = localIfStack.pop();
+        LLVMGenerator.load(id, new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.BOOLEAN), true);
+        LLVMGenerator.write_else_start();
+        LLVMGenerator.evaluate_else();
+    }
+
+    @Override
+    public void exitElsedef(HolyJavaParser.ElsedefContext context) {
+        LLVMGenerator.jump_to_else_end();
+        LLVMGenerator.write_else_end_label();
+    }
+
+    @Override
+    public void exitIfcond(HolyJavaParser.IfcondContext context) {
+        var id = context.getText();
+        localIfStack.push(id);
+    }
+
+    @Override
+    public void exitLoopcond(HolyJavaParser.LoopcondContext context) {
+        var id = context.getText();
+        localLoopStack.push(id);
+    }
+
+    @Override
+    public void enterClassdef(HolyJavaParser.ClassdefContext context) {
+        final var id = context.ID().getText();
+        final var clazz = new Clazz(id);
+        currentClass = clazz;
+        classes.put(id, clazz);
+    }
+
+    @Override
+    public void exitClassdef(HolyJavaParser.ClassdefContext context) {
+        final var id = context.ID().getText();
+        final var clazz = classes.get(id);
+        LLVMGenerator.defineClass(clazz);
+        LLVMGenerator.commit();
+        currentClass = null;
+    }
+
+    @Override
+    public void exitMethoddef(HolyJavaParser.MethoddefContext context) {
+        currentClass.methods.add(currentFunction);
+        currentFunction = null;
+    }
+
+    @Override
+    public void exitFielddef(HolyJavaParser.FielddefContext context) {
+        final var id = context.ID().getText();
+        final var typeKeyword = context.type().getText();
+        final var type = PrimitiveType.fromKeyword(typeKeyword);
+        final var field = new Value(id, type);
+        currentClass.fields.put(id, field);
+    }
+
+    @Override
     public void enterFundef(HolyJavaParser.FundefContext context) {
         isGlobalContext = false;
         LLVMGenerator.setMainContext(false);
@@ -205,9 +344,18 @@ class LLVMActions extends HolyJavaBaseListener {
     public void exitFundef(HolyJavaParser.FundefContext context) {
         LLVMGenerator.closeFunction(currentFunction);
         isGlobalContext = true;
-        LLVMGenerator.commit();
+
+        if (currentClass == null) {
+            LLVMGenerator.commit();
+        }
+
         LLVMGenerator.setMainContext(true);
         localVariables.clear();
+
+        if (context.getParent() instanceof HolyJavaParser.MethoddefContext) {
+            return;
+        }
+
         currentFunction = null;
     }
 
@@ -216,9 +364,15 @@ class LLVMActions extends HolyJavaBaseListener {
         final var id = context.ID().getText();
         final var returnTypeKeyword = context.type() == null ? context.VOID().getText() : context.type().getText();
         final var returnType = PrimitiveType.fromKeyword(returnTypeKeyword);
-        final var function = new Function(id, returnType);
-        functions.put(id, function);
+        final var function = currentClass == null ? new Function(id, returnType) : new Function(currentClass.name + "_" + id, returnType);
+        functions.put(currentClass == null ? id : currentClass.name + "_" + id, function);
         currentFunction = function;
+
+        if (currentClass != null) {
+            final var thisParameter = new Parameter(Parameter.THIS_PARAM_NAME, new CustomType(currentClass.name));
+            currentFunction.parameters.add(thisParameter);
+            setVariable(Parameter.THIS_PARAM_NAME, thisParameter);
+        }
     }
 
     @Override
@@ -234,6 +388,88 @@ class LLVMActions extends HolyJavaBaseListener {
         final var parameter = new Parameter(id, type);
         currentFunction.parameters.add(parameter);
         setVariable(id, parameter);
+    }
+
+    @Override
+    public void exitMethodcall(HolyJavaParser.MethodcallContext context) {
+        final var objectID = context.ID().getFirst().getText();
+        final var methodID = context.ID().getLast().getText();
+        final var object = getVariable(objectID, context);
+
+        final var clazz = classes.get(((CustomType) object.type).name);
+        final var method = functions.get(clazz.name + "_" + methodID);
+
+        if (method == null) {
+            error(context.getStart().getLine(), "unknown method " + methodID);
+        }
+
+        if (method.parameters.size() != context.expr0().size() + 1) {
+            error(context.getStart().getLine(), "method parameter count mismatch");
+        }
+
+        final List<Value> arguments = new LinkedList<>();
+
+        for (var i = 0; i < method.parameters.size(); i++) {
+            final var parameter = method.parameters.get(i);
+
+            if (parameter.name.equals(Parameter.THIS_PARAM_NAME)) {
+                if (!object.type.equals(parameter.type)) {
+                    error(context.getStart().getLine(), "method parameter type mismatch");
+                }
+
+                arguments.add(object);
+                continue;
+            }
+
+            final var argument = stack.pop();
+
+            if (parameter.type != argument.type) {
+                error(context.getStart().getLine(), "method parameter type mismatch");
+            }
+
+            arguments.add(argument);
+        }
+
+        LLVMGenerator.callFunction(method, arguments);
+
+        if (method.returnType != PrimitiveType.VOID) {
+            final var result = new Value(String.valueOf(LLVMGenerator.register - 1), method.returnType);
+            stack.push(result);
+        }
+    }
+
+    @Override
+    public void exitFuncall(HolyJavaParser.FuncallContext context) {
+        final var ID = context.ID().getText();
+        final var function = functions.get(ID);
+
+        if (function == null) {
+            error(context.getStart().getLine(), "unknown function " + ID);
+        }
+
+        if (function.parameters.size() != context.expr0().size()) {
+            error(context.getStart().getLine(), "function parameter count mismatch");
+        }
+
+        final List<Value> arguments = new LinkedList<>();
+
+        for (var i = 0; i < function.parameters.size(); i++) {
+            final var parameter = function.parameters.get(i);
+            final var argument = stack.pop();
+
+            if (parameter.type != argument.type) {
+                error(context.getStart().getLine(), "function parameter type mismatch");
+            }
+
+            arguments.add(argument);
+        }
+
+        LLVMGenerator.callFunction(function, arguments);
+
+        if (function.returnType != PrimitiveType.VOID) {
+            final var result = new Value(String.valueOf(LLVMGenerator.register - 1), function.returnType);
+            stack.push(result);
+        }
     }
 
     @Override
@@ -297,72 +533,6 @@ class LLVMActions extends HolyJavaBaseListener {
     }
 
     @Override
-    public void enterElsedef(HolyJavaParser.ElsedefContext context) {
-        var id = localIfStack.pop();
-        LLVMGenerator.load(id, new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.BOOLEAN), true);
-        LLVMGenerator.write_else_start();
-        LLVMGenerator.evaluate_else();
-    }
-
-    @Override
-    public void exitElsedef(HolyJavaParser.ElsedefContext context) {
-        LLVMGenerator.jump_to_else_end();
-        LLVMGenerator.write_else_end_label();
-    }
-
-    @Override
-    public void exitIfcond(HolyJavaParser.IfcondContext context) {
-        var id = context.getText();
-        localIfStack.push(id);
-    }
-
-    @Override
-    public void enterIfdef(HolyJavaParser.IfdefContext context) {
-        var value = localIfStack.pop();
-        localIfStack.push(value);
-        var condition = stack.pop();
-
-        if(condition.type != PrimitiveType.BOOLEAN) {
-            error(context.getStart().getLine(), "Boolean type condition mismatch");
-        }
-        LLVMGenerator.write_if_start_label();
-        LLVMGenerator.evaluate_if_condition(condition.name);
-    }
-
-    @Override
-    public void exitIfdef(HolyJavaParser.IfdefContext context) {
-        LLVMGenerator.jump_to_if_end();
-        LLVMGenerator.write_if_end_label();
-    }
-
-    @Override
-    public void exitLoopcond(HolyJavaParser.LoopcondContext context) {
-        var id = context.getText();
-        localLoopStack.push(id);
-    }
-
-    @Override
-    public void enterWhiledef(HolyJavaParser.WhiledefContext context) {
-        var val = localLoopStack.pop();
-        localLoopStack.push(val);
-        var condition = stack.pop();
-        if(condition.type != PrimitiveType.BOOLEAN) {
-            error(context.getStart().getLine(), "Boolean type condition mismatch");
-        }
-        LLVMGenerator.write_loop_start_label();
-        LLVMGenerator.evaluate_loop_condition(condition.name);
-
-    }
-
-    @Override
-    public void exitWhiledef(HolyJavaParser.WhiledefContext context) {
-        String id = localLoopStack.pop();
-        LLVMGenerator.load(id, new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.BOOLEAN), true);
-        LLVMGenerator.evaluate_loop();
-        LLVMGenerator.write_loop_end_label(); // End of the loop
-    }
-
-    @Override
     public void exitOr(HolyJavaParser.OrContext context) {
         final var value1 = stack.pop();
         final var value2 = stack.pop();
@@ -376,28 +546,50 @@ class LLVMActions extends HolyJavaBaseListener {
     }
 
     @Override
-    public void exitXor(HolyJavaParser.XorContext context) {
+    public void exitLess(HolyJavaParser.LessContext context) {
         final var value1 = stack.pop();
         final var value2 = stack.pop();
 
-        if (value1.type != PrimitiveType.BOOLEAN || value2.type != PrimitiveType.BOOLEAN) {
-            error(context.getStart().getLine(), "XOR type mismatch");
+        if (!value1.type.equals(value2.type)) {
+            error(context.getStart().getLine(), "LESS type mismatch");
         }
 
-        LLVMGenerator.xor(value1, value2);
+        if (value1.type == PrimitiveType.STRING || value1.type == PrimitiveType.BOOLEAN) {
+            error(context.getStart().getLine(), "LESS type invalid");
+        }
+
+        if (value1.type == PrimitiveType.INT || value1.type == PrimitiveType.LONG) {
+            LLVMGenerator.less_i(value1, value2);
+        }
+
+        if (value1.type == PrimitiveType.DOUBLE || value1.type == PrimitiveType.FLOAT) {
+            LLVMGenerator.less_f(value1, value2);
+        }
+
         stack.push(new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
     }
 
     @Override
-    public void exitAnd(HolyJavaParser.AndContext context) {
+    public void exitGreater(HolyJavaParser.GreaterContext context) {
         final var value1 = stack.pop();
         final var value2 = stack.pop();
 
-        if (value1.type != PrimitiveType.BOOLEAN || value2.type != PrimitiveType.BOOLEAN) {
-            error(context.getStart().getLine(), "AND type mismatch");
+        if (!value1.type.equals(value2.type)) {
+            error(context.getStart().getLine(), "GRATER type mismatch");
         }
 
-        LLVMGenerator.and(value1, value2);
+        if (value1.type == PrimitiveType.STRING || value1.type == PrimitiveType.BOOLEAN) {
+            error(context.getStart().getLine(), "GREATER type invalid");
+        }
+
+        if (value1.type == PrimitiveType.INT || value1.type == PrimitiveType.LONG) {
+            LLVMGenerator.greater_i(value1, value2);
+        }
+
+        if (value1.type == PrimitiveType.DOUBLE || value1.type == PrimitiveType.FLOAT) {
+            LLVMGenerator.greater_f(value1, value2);
+        }
+
         stack.push(new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
     }
 
@@ -450,50 +642,28 @@ class LLVMActions extends HolyJavaBaseListener {
     }
 
     @Override
-    public void exitLess(HolyJavaParser.LessContext context) {
+    public void exitXor(HolyJavaParser.XorContext context) {
         final var value1 = stack.pop();
         final var value2 = stack.pop();
 
-        if (!value1.type.equals(value2.type)) {
-            error(context.getStart().getLine(), "LESS type mismatch");
+        if (value1.type != PrimitiveType.BOOLEAN || value2.type != PrimitiveType.BOOLEAN) {
+            error(context.getStart().getLine(), "XOR type mismatch");
         }
 
-        if (value1.type == PrimitiveType.STRING || value1.type == PrimitiveType.BOOLEAN) {
-            error(context.getStart().getLine(), "LESS type invalid");
-        }
-
-        if (value1.type == PrimitiveType.INT || value1.type == PrimitiveType.LONG) {
-            LLVMGenerator.less_i(value1, value2);
-        }
-
-        if (value1.type == PrimitiveType.DOUBLE || value1.type == PrimitiveType.FLOAT) {
-            LLVMGenerator.less_f(value1, value2);
-        }
-
+        LLVMGenerator.xor(value1, value2);
         stack.push(new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
     }
 
     @Override
-    public void exitGreater(HolyJavaParser.GreaterContext context) {
+    public void exitAnd(HolyJavaParser.AndContext context) {
         final var value1 = stack.pop();
         final var value2 = stack.pop();
 
-        if (!value1.type.equals(value2.type)) {
-            error(context.getStart().getLine(), "GRATER type mismatch");
+        if (value1.type != PrimitiveType.BOOLEAN || value2.type != PrimitiveType.BOOLEAN) {
+            error(context.getStart().getLine(), "AND type mismatch");
         }
 
-        if (value1.type == PrimitiveType.STRING || value1.type == PrimitiveType.BOOLEAN) {
-            error(context.getStart().getLine(), "GREATER type invalid");
-        }
-
-        if (value1.type == PrimitiveType.INT || value1.type == PrimitiveType.LONG) {
-            LLVMGenerator.greater_i(value1, value2);
-        }
-
-        if (value1.type == PrimitiveType.DOUBLE || value1.type == PrimitiveType.FLOAT) {
-            LLVMGenerator.greater_f(value1, value2);
-        }
-
+        LLVMGenerator.and(value2, value1);
         stack.push(new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
     }
 
@@ -569,9 +739,13 @@ class LLVMActions extends HolyJavaBaseListener {
             return;
         }
 
+        if (!(value.type instanceof PrimitiveType)) {
+            error(context.getStart().getLine(), "type mismatch");
+        }
+
         switch (value.type) {
-            case INT, LONG -> LLVMGenerator.sitofp(value, PrimitiveType.FLOAT);
-            case FLOAT -> LLVMGenerator.trunc(value);
+            case PrimitiveType.INT, PrimitiveType.LONG -> LLVMGenerator.sitofp(value, PrimitiveType.FLOAT);
+            case PrimitiveType.FLOAT -> LLVMGenerator.trunc(value);
             default -> error(context.getStart().getLine(), "type mismatch");
         }
 
@@ -586,9 +760,13 @@ class LLVMActions extends HolyJavaBaseListener {
             return;
         }
 
+        if (!(value.type instanceof PrimitiveType)) {
+            error(context.getStart().getLine(), "type mismatch");
+        }
+
         switch (value.type) {
-            case LONG -> LLVMGenerator.trunc(value);
-            case FLOAT, DOUBLE -> LLVMGenerator.fptosi(value, PrimitiveType.INT);
+            case PrimitiveType.LONG -> LLVMGenerator.trunc(value);
+            case PrimitiveType.FLOAT, PrimitiveType.DOUBLE -> LLVMGenerator.fptosi(value, PrimitiveType.INT);
             default -> error(context.getStart().getLine(), "type mismatch");
         }
 
@@ -603,9 +781,13 @@ class LLVMActions extends HolyJavaBaseListener {
             return;
         }
 
+        if (!(value.type instanceof PrimitiveType)) {
+            error(context.getStart().getLine(), "type mismatch");
+        }
+
         switch (value.type) {
-            case INT -> LLVMGenerator.ext(value);
-            case FLOAT, DOUBLE -> LLVMGenerator.fptosi(value, PrimitiveType.LONG);
+            case PrimitiveType.INT -> LLVMGenerator.ext(value);
+            case PrimitiveType.FLOAT, PrimitiveType.DOUBLE -> LLVMGenerator.fptosi(value, PrimitiveType.LONG);
             default -> error(context.getStart().getLine(), "type mismatch");
         }
 
@@ -620,9 +802,13 @@ class LLVMActions extends HolyJavaBaseListener {
             return;
         }
 
+        if (!(value.type instanceof PrimitiveType)) {
+            error(context.getStart().getLine(), "type mismatch");
+        }
+
         switch (value.type) {
-            case INT, LONG -> LLVMGenerator.sitofp(value, PrimitiveType.DOUBLE);
-            case FLOAT -> LLVMGenerator.ext(value);
+            case PrimitiveType.INT, PrimitiveType.LONG -> LLVMGenerator.sitofp(value, PrimitiveType.DOUBLE);
+            case PrimitiveType.FLOAT -> LLVMGenerator.ext(value);
             default -> error(context.getStart().getLine(), "type mismatch");
         }
 
@@ -630,37 +816,25 @@ class LLVMActions extends HolyJavaBaseListener {
     }
 
     @Override
-    public void exitFuncall(HolyJavaParser.FuncallContext context) {
-        final var ID = context.ID().getText();
-        final var function = functions.get(ID);
+    public void exitReadfield(HolyJavaParser.ReadfieldContext context) {
+        final var objectID = context.ID().getFirst().getText();
+        final var fieldID = context.ID().getLast().getText();
+        final var object = getVariable(objectID, context);
 
-        if (function == null) {
-            error(context.getStart().getLine(), "unknown function " + ID);
+        final var clazz = classes.get(((CustomType) object.type).name);
+
+        final var field = clazz.getFieldOffsetNumber(fieldID);
+
+        if (field == -1) {
+            error(context.getStart().getLine(), "unknown field " + fieldID);
         }
 
-        if (function.parameters.size() != context.expr0().size()) {
-            error(context.getStart().getLine(), "function parameter count mismatch");
-        }
+        final var fieldType = clazz.fields.get(fieldID).type;
 
-        final List<Value> arguments = new LinkedList<>();
+        LLVMGenerator.readField(clazz, field, fieldType, objectID);
 
-        for (var i = 0; i < function.parameters.size(); i++) {
-            final var parameter = function.parameters.get(i);
-            final var argument = stack.pop();
-
-            if (parameter.type != argument.type) {
-                error(context.getStart().getLine(), "function parameter type mismatch");
-            }
-
-            arguments.add(argument);
-        }
-
-        LLVMGenerator.callFunction(function, arguments);
-
-        if (function.returnType != PrimitiveType.VOID) {
-            final var result = new Value(String.valueOf(LLVMGenerator.register - 1), function.returnType);
-            stack.push(result);
-        }
+        final var value = new Value(String.valueOf(LLVMGenerator.register - 1), fieldType);
+        stack.push(value);
     }
 
     @Override

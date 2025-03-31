@@ -63,7 +63,7 @@ class LLVMGenerator {
         register++;
     }
 
-    static void declare(String id, PrimitiveType type, boolean isGlobalContext) {
+    static void declare(String id, Type type, boolean isGlobalContext) {
         final var text = isGlobalContext ? HEADER_TEXT : CURRENT_TEXT;
         text.append(isGlobalContext ? "@" : "%")
                 .append(id)
@@ -395,8 +395,8 @@ class LLVMGenerator {
         cur_ifs++;
         final var startLabel = "if_start_" + cur_ifs;
         CURRENT_TEXT.append("br label %")
-            .append(startLabel)
-            .append("\n");
+                .append(startLabel)
+                .append("\n");
         CURRENT_TEXT.append(startLabel)
                 .append(": \n");
     }
@@ -670,10 +670,10 @@ class LLVMGenerator {
     static void not_equal_s(Value value1, Value value2) {
         equal_s(value1, value2);
         CURRENT_TEXT.append("%")
-            .append(register)
-            .append(" = xor i1 %")
-            .append(register - 1)
-            .append(", 1\n");
+                .append(register)
+                .append(" = xor i1 %")
+                .append(register - 1)
+                .append(", 1\n");
         register++;
     }
 
@@ -835,7 +835,7 @@ class LLVMGenerator {
         register++;
     }
 
-    static void sitofp(Value value, PrimitiveType targetType) {
+    static void sitofp(Value value, Type targetType) {
         CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = sitofp ")
@@ -848,7 +848,7 @@ class LLVMGenerator {
         register++;
     }
 
-    static void fptosi(Value value, PrimitiveType targetType) {
+    static void fptosi(Value value, Type targetType) {
         CURRENT_TEXT.append("%")
                 .append(register)
                 .append(" = fptosi ")
@@ -948,6 +948,7 @@ class LLVMGenerator {
             final var param = function.parameters.get(i);
 
             CURRENT_TEXT.append(param.type.llvmType())
+                    .append(param.name.equals(Parameter.THIS_PARAM_NAME) ? "*" : "")
                     .append(" %")
                     .append(param.name);
 
@@ -982,8 +983,10 @@ class LLVMGenerator {
 
         for (var i = 0; i < args.size(); i++) {
             final var arg = args.get(i);
+            final var isCustomType = arg.type instanceof CustomType;
 
             CURRENT_TEXT.append(arg.type.llvmType())
+                    .append(isCustomType ? "*" : "")
                     .append(" ")
                     .append(arg.name());
 
@@ -1007,6 +1010,80 @@ class LLVMGenerator {
         } else {
             CURRENT_TEXT = BUFFER_TEXT;
         }
+    }
+
+    public static void defineClass(Clazz clazz) {
+        HEADER_TEXT.append("%")
+                .append(clazz.name)
+                .append(" = type {\n");
+
+        var fieldsCount = 0;
+
+        for (final var field : clazz.fields.entrySet()) {
+            HEADER_TEXT.append(field.getValue().type.llvmType())
+                    .append(fieldsCount == clazz.fields.size() - 1 ? "\n" : ",\n");
+            fieldsCount++;
+        }
+
+        HEADER_TEXT.append("}\n");
+    }
+
+    public static void newObject(String id, Clazz clazz) {
+        CURRENT_TEXT.append("%")
+                .append(id)
+                .append(" = alloca %")
+                .append(clazz.name)
+                .append("\n");
+        register++;
+    }
+
+    public static void assignField(Clazz clazz, int field, String objectId, Value value) {
+        CURRENT_TEXT.append("%")
+                .append(register)
+                .append(" = getelementptr inbounds %")
+                .append(clazz.name)
+                .append(", %")
+                .append(clazz.name)
+                .append("* %")
+                .append(objectId)
+                .append(", i32 0, i32 ")
+                .append(field)
+                .append("\n");
+        register++;
+        CURRENT_TEXT.append("store ")
+                .append(value.type.llvmType())
+                .append(" ")
+                .append(value.name())
+                .append(", ")
+                .append(value.type.llvmType())
+                .append("* %")
+                .append(register - 1)
+                .append("\n");
+    }
+
+    public static void readField(Clazz clazz, int field, Type fieldType, String objectId) {
+        CURRENT_TEXT.append("%")
+                .append(register)
+                .append(" = getelementptr inbounds %")
+                .append(clazz.name)
+                .append(", %")
+                .append(clazz.name)
+                .append("* %")
+                .append(objectId)
+                .append(", i32 0, i32 ")
+                .append(field)
+                .append("\n");
+        register++;
+        CURRENT_TEXT.append("%")
+                .append(register)
+                .append(" = load ")
+                .append(fieldType.llvmType())
+                .append(", ")
+                .append(fieldType.llvmType())
+                .append("* %")
+                .append(register - 1)
+                .append("\n");
+        register++;
     }
 
     static String generate() {

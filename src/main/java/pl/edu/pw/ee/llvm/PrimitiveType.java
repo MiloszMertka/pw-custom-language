@@ -1,6 +1,6 @@
 package pl.edu.pw.ee.llvm;
 
-public enum PrimitiveType {
+public enum PrimitiveType implements Type {
     INT("i32", "strpi", "0", "icmp"),
     LONG("i64", "strpi", "0", "icmp"),
     FLOAT("float", "strpd", "0.0", "fcmp"),
@@ -15,7 +15,7 @@ public enum PrimitiveType {
     private final String llvmZeroValue;
     private final String llvmComparator;
 
-    PrimitiveType(String llvmType, String llvmPrintPattern, String llvmZeroValue,  String llvmComparator) {
+    PrimitiveType(String llvmType, String llvmPrintPattern, String llvmZeroValue, String llvmComparator) {
         this.llvmType = llvmType;
         this.llvmPrintPattern = llvmPrintPattern;
         this.llvmZeroValue = llvmZeroValue;
@@ -28,22 +28,26 @@ public enum PrimitiveType {
                 return type;
             }
         }
-        
+
         return UNKNOWN;
     }
 
+    @Override
     public String llvmType() {
         return llvmType;
     }
 
+    @Override
     public String llvmComparator() {
         return llvmComparator;
     }
 
+    @Override
     public String llvmPrintPattern() {
         return llvmPrintPattern;
     }
 
+    @Override
     public String llvmZeroValue() {
         return llvmZeroValue;
     }
