@@ -541,7 +541,7 @@ class LLVMActions extends HolyJavaBaseListener {
             error(context.getStart().getLine(), "OR type mismatch");
         }
 
-        LLVMGenerator.or(value1, value2);
+        LLVMGenerator.or(value2, value1);
         stack.push(new Value(String.valueOf(LLVMGenerator.register - 1), PrimitiveType.BOOLEAN));
     }
 
